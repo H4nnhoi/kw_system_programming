@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "sha1_utils.h"
 
 #define MAX_INPUT 256
 
@@ -7,6 +8,7 @@ int main() {
     char input[MAX_INPUT];
 
     while (1) {
+        char hashed_url[41];
         printf("input url> ");
         fflush(stdout);  // 출력 버퍼 비우기 
 
@@ -22,6 +24,8 @@ int main() {
             printf("Goodbye!\n");
             break;                              // over the program
         }
+        sha1_hash(input, hashed_url);
+        printf("result hashed_url = %s\n", hashed_url);
 
     }
 

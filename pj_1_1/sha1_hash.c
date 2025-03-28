@@ -8,7 +8,7 @@ char *sha1_hash(char *input_url, char *hashed_url){
     int i;
 
     // convert value, size of convert value, save value converted
-    SHA1(input_url, strlen(input_url), hashed_160bits);
+    SHA1((const unsigned char *)input_url, strlen(input_url), hashed_160bits);
 
     //save hashed url in hashed_hex converted to hex char
     for(int i = 0; i < sizeof(hashed_160bits); i++){
