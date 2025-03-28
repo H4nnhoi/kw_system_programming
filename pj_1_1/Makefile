@@ -1,5 +1,5 @@
 CC = gcc
-SRC = proxy_cache.c sha1_hash.c getHomeDir.c
+SRC = proxy_cache.c sha1_hash.c getHomeDir.c ensureDirExist.c
 TARGET = proxy
 
 OPENSSL_DIR = /opt/homebrew/opt/openssl@3

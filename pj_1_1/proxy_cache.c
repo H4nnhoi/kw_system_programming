@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 #include "sha1_utils.h"
 #include "home_dir_utils.h"
+#include "ensureDirUtils.h"
 
 #define MAX_INPUT 256
-mode_t old_umask;
 char home[MAX_INPUT];
 char cachePath[MAX_INPUT];
 
@@ -14,22 +13,8 @@ int main() {
     char input[MAX_INPUT];
     getHomeDir(home);
     snprintf(cachePath, MAX_INPUT, "%s/cache", home);
-    old_umask = umask(0);
-    struct stat st;
-    
-
-    if (stat(cachePath, &st) == -1) {
-        // 디렉토리가 없으면 생성
-        if (mkdir(cachePath, 0777) == 0) {
-            printf("Created cache directory at: %s\n", cachePath);
-        } else {
-            perror("mkdir failed");
-        }
-    } else {
-        // 이미 존재하는 경우
-        printf("Cache directory exists at: %s\n", cachePath);
-    }
-
+    // if cache directory didnt exsit, make directory permit 777
+    ensureDirExist(cachePath, 0777);
 
     while (1) {
         char hashed_url[41];
@@ -52,7 +37,15 @@ int main() {
         sha1_hash(input, hashed_url);
         printf("result hashed_url = %s\n", hashed_url);
 
+        // 🔽 여기가 추가된 부분
+        char subdir[4];
+        strncpy(subdir, hashed_url, 3);
+        subdir[3] = '\0';
 
+        char subCachePath[MAX_INPUT];
+        snprintf(subCachePath, MAX_INPUT, "%s/%s", cachePath, subdir);
+
+        ensureDirExist(subCachePath, 0777);
 
     }
 
