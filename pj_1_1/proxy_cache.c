@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include "sha1_utils.h"
+#include "sha1Utils.h"
 #include "dirUtils.h"
 #include "fileUtils.h"
 
@@ -54,7 +54,7 @@ int main() {
         strncpy(fileName, hashed_url + 2, sizeof(fileName) - 1);
         fileName[sizeof(fileName) - 1] = '\0'; 
 
-        createCacheFile(cachePath, hashed_url, sizeof(hashed_url) - sizeof(subdir));
+        createCacheFile(subCachePath, fileName);
         
 
     }
