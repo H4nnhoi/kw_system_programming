@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 #include "sha1_utils.h"
-#include "home_dir_utils.h"
-#include "ensureDirUtils.h"
+#include "dirUtils.h"
+#include "fileUtils.h"
 
 #define MAX_INPUT 256
+#define CACHE_DIR_SIZE 4
+#define FILE_SIZE 40
 char home[MAX_INPUT];
 char cachePath[MAX_INPUT];
 
@@ -37,15 +39,23 @@ int main() {
         sha1_hash(input, hashed_url);
         printf("result hashed_url = %s\n", hashed_url);
 
-        // 🔽 여기가 추가된 부분
-        char subdir[4];
+        // divide hashed_url
+        char subdir[CACHE_DIR_SIZE];
         strncpy(subdir, hashed_url, 3);
         subdir[3] = '\0';
 
+        // create directory by divide hashed_url
         char subCachePath[MAX_INPUT];
         snprintf(subCachePath, MAX_INPUT, "%s/%s", cachePath, subdir);
-
         ensureDirExist(subCachePath, 0777);
+
+        // create file by divide hashed_url
+        char fileName[FILE_SIZE];
+        strncpy(fileName, hashed_url + 2, sizeof(fileName) - 1);
+        fileName[sizeof(fileName) - 1] = '\0'; 
+
+        createCacheFile(cachePath, hashed_url, sizeof(hashed_url) - sizeof(subdir));
+        
 
     }
 
