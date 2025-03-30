@@ -4,6 +4,17 @@
 
 #define MAX_FULL_PATH_SIZE 512
 
+///////////////////////////////////////////////////////////////////////
+// createCacheFile                                                   //
+// ================================================================= //
+// Input: char* dirPath   -> Directory path to create the file in    //
+//        char* fileName  -> File name to create (no extension)      //
+// Output: void                                                      //
+// Purpose:                                                          //
+// Create an empty cache file with the given file name in            //
+//          the specified directory. File name will have ".txt"      //
+//          extension and will be created as dirPath/fileName.txt.   //
+///////////////////////////////////////////////////////////////////////
 void createCacheFile(char *dirPath, char *fileName) {
     char fullPath[MAX_FULL_PATH_SIZE]; // full Path of file
     
@@ -18,5 +29,5 @@ void createCacheFile(char *dirPath, char *fileName) {
     }
     fclose(fp);
 
-    printf("Created cache file: %s\n", fullPath);
+    // printf("Created cache file: %s\n", fullPath);
 }

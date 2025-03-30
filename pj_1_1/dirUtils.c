@@ -8,6 +8,16 @@
 
 mode_t old_umask;
 
+///////////////////////////////////////////////////////////////////////
+// ensureDirExist                                                    //
+// ================================================================= //
+// Input: char* cachePath      -> Directory path to check/create     //
+//        int permission_value -> Permission value to apply          //
+//                                                    (e.g. 0777)    //
+// Output: void                                                      //
+// Purpose: Check if the given directory exists. If not, create it   //
+//          with the specified permissions.                          //
+///////////////////////////////////////////////////////////////////////
 void ensureDirExist(char *cachePath, int permission_value){
     struct stat st;
     old_umask = umask(0);
@@ -21,6 +31,15 @@ void ensureDirExist(char *cachePath, int permission_value){
     } 
 }
 
+
+///////////////////////////////////////////////////////////////////////
+// getHomeDir                                                        //
+// ================================================================= //
+// Input: char* home -> Buffer to store the home directory path      //
+// Output: char*     -> Pointer to the home buffer                   //
+// Purpose: Retrieve the current user's home directory and store it  //
+//          in the provided buffer.                                  //
+///////////////////////////////////////////////////////////////////////
 char *getHomeDir(char *home){
     struct passwd *usr_info = getpwuid(getuid());
     strcpy(home, usr_info->pw_dir);

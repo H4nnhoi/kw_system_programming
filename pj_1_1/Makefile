@@ -1,6 +1,6 @@
 CC = gcc
 SRC = proxy_cache.c sha1Utils.c fileUtils.c dirUtils.c
-TARGET = proxy
+TARGET = proxy_cache
 
 OPENSSL_DIR = /opt/homebrew/opt/openssl@3
 

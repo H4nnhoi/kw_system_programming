@@ -1,3 +1,15 @@
+///////////////////////////////////////////////////////////////////////
+// File Name : Main.c                                                //
+// Date : 2025/03/30                                                 //
+// Os : Ubuntu 16.04 LTS 64bits                                      //
+// Author : Lee Jeong Han                                            //
+// Student ID : 2020202047                                           //
+// ----------------------------------------------------------------- //
+// Title : System Programming Assignment #1-1 (proxy server)         //
+// Description : A simple C program that hashes user-input URLs      //
+// using SHA1 and stores them as files                               // 
+// in a structured cache directory based on the hash.                //
+///////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include <string.h>
 #include "sha1Utils.h"
@@ -32,12 +44,12 @@ int main() {
         input[strcspn(input, "\n")] = '\0';
 
         if (strcmp(input, "bye") == 0) {        // if insert is bye
-            printf("Goodbye!\n");
+            // printf("Goodbye!\n");
             break;                              // over the program
         }
         // get hashed URL using sha1_hash function
         sha1_hash(input, hashed_url);
-        printf("result hashed_url = %s\n", hashed_url);
+        // printf("result hashed_url = %s\n", hashed_url);
 
         // divide hashed_url
         char subdir[CACHE_DIR_SIZE];
