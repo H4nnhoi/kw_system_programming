@@ -15,6 +15,7 @@
 #include "sha1Utils.h"
 #include "dirUtils.h"
 #include "fileUtils.h"
+#include "hit_and_miss.h"
 
 #define MAX_INPUT 256
 #define CACHE_DIR_SIZE 4
@@ -49,24 +50,39 @@ int main() {
         }
         // get hashed URL using sha1_hash function
         sha1_hash(input, hashed_url);
-        // printf("result hashed_url = %s\n", hashed_url);
+        printf("result hashed_url = %s\n", hashed_url);
 
         // divide hashed_url
         char subdir[CACHE_DIR_SIZE];
         strncpy(subdir, hashed_url, 3);
         subdir[3] = '\0';
 
-        // create directory by divide hashed_url
-        char subCachePath[MAX_INPUT];
-        snprintf(subCachePath, MAX_INPUT, "%s/%s", cachePath, subdir);
-        ensureDirExist(subCachePath, 0777);
-
         // create file by divide hashed_url
+        // edit file path range [3-41]
         char fileName[FILE_SIZE];
-        strncpy(fileName, hashed_url + 2, sizeof(fileName) - 1);
+        strncpy(fileName, hashed_url + 3, sizeof(fileName) - 1);
         fileName[sizeof(fileName) - 1] = '\0'; 
 
-        createCacheFile(subCachePath, fileName);
+        char subCachePath[MAX_INPUT];
+        snprintf(subCachePath, MAX_INPUT, "%s/%s", cachePath, subdir);
+
+        // HIT & MISS case
+        if(is_cache_hit(subCachePath, fileName) < 0){
+            printf("error from cache\n");
+
+        }else if(is_cache_hit(subCachePath, fileName) == 0){      // MISS
+            ensureDirExist(subCachePath, 0777);
+            createCacheFile(subCachePath, fileName);
+            printf("MISS\n");
+        }else if(is_cache_hit(subCachePath, fileName) == 1){      // HIT
+            printf("HIT\n");
+        }
+
+        // // create directory by divide hashed_url
+        // char subCachePath[MAX_INPUT];
+        // snprintf(subCachePath, MAX_INPUT, "%s/%s", cachePath, subdir);
+        // ensureDirExist(subCachePath, 0777);
+        // createCacheFile(subCachePath, fileName);
         
 
     }

@@ -19,7 +19,7 @@ void createCacheFile(char *dirPath, char *fileName) {
     char fullPath[MAX_FULL_PATH_SIZE]; // full Path of file
     
     // 1. create file full path
-    snprintf(fullPath, sizeof(fullPath), "%s/%s.txt", dirPath, fileName);
+    snprintf(fullPath, sizeof(fullPath), "%s/%s", dirPath, fileName);
 
     // 2. create file
     FILE *fp = fopen(fullPath, "w");
@@ -29,5 +29,5 @@ void createCacheFile(char *dirPath, char *fileName) {
     }
     fclose(fp);
 
-    // printf("Created cache file: %s\n", fullPath);
+    printf("Created cache file: %s\n", fullPath);
 }
