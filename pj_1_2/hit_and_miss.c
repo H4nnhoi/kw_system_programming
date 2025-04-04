@@ -13,6 +13,7 @@ int is_cache_hit(const char* dir, const char* file) {
 
     struct dirent* entry;
     while ((entry = readdir(dp)) != NULL) {
+        printf("check = %s\n", entry->d_name);
         if (strcmp(entry->d_name, file) == 0) {
             closedir(dp);
             return 1; // HIT

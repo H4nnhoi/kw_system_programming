@@ -50,7 +50,7 @@ int main() {
         }
         // get hashed URL using sha1_hash function
         sha1_hash(input, hashed_url);
-        printf("result hashed_url = %s\n", hashed_url);
+        // printf("result hashed_url = %s\n", hashed_url);
 
         // divide hashed_url
         char subdir[CACHE_DIR_SIZE];
