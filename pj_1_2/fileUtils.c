@@ -18,17 +18,15 @@
 //          the specified directory. File name will have 	         //
 //          extension and will be created as dirPath/fileName        //
 ///////////////////////////////////////////////////////////////////////
-void createCacheFile(char *dirPath, char *fileName) {
+void createFile(const char *dirPath, const char *fileName) {
     char fullPath[MAX_FULL_PATH_SIZE]; // full Path of file
     
     // 1. create file full path
     snprintf(fullPath, sizeof(fullPath), "%s/%s", dirPath, fileName);
 
-    // // 2. find file
-    // struct stat st;
-    // if(stat(fullPath, &st) == 0) return 0;
 
-    // 3.if not exist, create file
+    // 2. create file
+    // * edit : not consider exist, only write file
     FILE *fp = fopen(fullPath, "w");
     if (fp == NULL) {
         perror("fopen failed");
@@ -37,5 +35,24 @@ void createCacheFile(char *dirPath, char *fileName) {
     fclose(fp);
     return;
 
-    // printf("Created cache file: %s\n", fullPath);
+}
+
+
+void init_log(FILE **log_fp, const char* fullPath){
+    *log_fp = fopen(fullPath, "a");
+    if(*log_fp == NULL){
+        perror("fopen failed");
+        return;
+    }
+}
+void close_log(FILE **log_fp) {
+    if (*log_fp != NULL) fclose(*log_fp);
+}
+
+void write_log_contents(FILE **log_fp, const char *contents){    
+    if (*log_fp != NULL) {
+        fprintf(*log_fp, "%s", contents);
+        fflush(*log_fp);         //immediately write
+    }
+
 }

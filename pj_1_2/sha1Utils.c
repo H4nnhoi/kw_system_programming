@@ -2,6 +2,20 @@
 #include <string.h>
 #include <openssl/sha.h>
 
+
+///////////////////////////////////////////////////////////////////////
+// sha1_hash                                                         //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - input_url: the original string to be hashed                   //
+//   - hashed_url: buffer to store the resulting SHA-1 hex string    //
+// Output:                                                           //
+//   - Returns a pointer to the hashed_url buffer                    //
+// Purpose:                                                          //
+//   - Computes the SHA-1 hash of the input_url                      //
+//   - Converts the 20-byte binary hash to a 40-character hex string //
+//   - Stores the result in hashed_url                               //
+///////////////////////////////////////////////////////////////////////
 char *sha1_hash(char *input_url, char *hashed_url){
     unsigned char hashed_160bits[20];   // always 20byte SHA1
     char hashed_hex[41];                // 20 byte * 2
