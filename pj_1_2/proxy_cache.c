@@ -66,16 +66,20 @@ int main() {
         char subCachePath[MAX_INPUT];
         snprintf(subCachePath, MAX_INPUT, "%s/%s", cachePath, subdir);
 
+        int hit_and_miss_result = is_cache_hit(subCachePath, fileName);
+
         // HIT & MISS case
-        if(is_cache_hit(subCachePath, fileName) < 0){
+        if(hit_and_miss_result < 0){
             printf("error from cache\n");
 
-        }else if(is_cache_hit(subCachePath, fileName) == 0){      // MISS
+        }else if(hit_and_miss_result == 0){      // MISS
             ensureDirExist(subCachePath, 0777);
             createCacheFile(subCachePath, fileName);
             printf("MISS\n");
-        }else if(is_cache_hit(subCachePath, fileName) == 1){      // HIT
+        }else if(hit_and_miss_result == 1){      // HIT
             printf("HIT\n");
+        }else{
+            printf("not range of return\n");
         }
 
         // // create directory by divide hashed_url
