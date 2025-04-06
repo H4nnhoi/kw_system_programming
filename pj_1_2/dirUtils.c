@@ -18,7 +18,7 @@ mode_t old_umask;
 // Purpose: Check if the given directory exists. If not, create it   //
 //          with the specified permissions.                          //
 ///////////////////////////////////////////////////////////////////////
-void ensureDirExist(char *cachePath, int permission_value){
+void ensureDirExist(const char *cachePath, int permission_value){
     struct stat st;
     old_umask = umask(0);
 

@@ -2,6 +2,15 @@
 #include <stdio.h>
 #include <string.h>
 
+///////////////////////////////////////////////////////////////////////
+// get_input_url                                                     //
+// ================================================================= //
+// Input: int init_buf_size -> Initial buffer size for input string  //
+// Output: char* -> Dynamically allocated user input string          //
+// Purpose: Reads user input (until newline) dynamically by          //
+//          expanding buffer size as needed using realloc().         //
+//          Returns a malloc'ed string, Caller must free it.         //
+///////////////////////////////////////////////////////////////////////
 // * edit input to Dynamic Memory Allocation (not static allocation)
 char* get_input_url(int init_buf_size){
     
@@ -32,7 +41,15 @@ char* get_input_url(int init_buf_size){
 
     return buffer;
 }
-
+///////////////////////////////////////////////////////////////////////
+// make_dir_path                                                     //
+// ================================================================= //
+// Input: const char* base_path -> Base directory path               //
+//        const char* subdir    -> Subdirectory or filename to append//
+// Output: char* -> Full path string in format "base_path/subdir"    //
+// Purpose: Concatenate base_path and subdir with '/' separator and  //
+//          return newly allocated string. Caller must free it.      //
+///////////////////////////////////////////////////////////////////////
 char* make_dir_path(const char* base_path, const char* subdir) {
     size_t needed_size = strlen(base_path) + strlen(subdir) + 2; // "/" + '\0'
     char* full_path = malloc(needed_size);

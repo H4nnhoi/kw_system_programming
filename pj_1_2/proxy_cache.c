@@ -5,10 +5,12 @@
 // Author : Lee Jeong Han                                            //
 // Student ID : 2020202047                                           //
 // ----------------------------------------------------------------- //
-// Title : System Programming Assignment #1-1 (proxy server)         //
-// Description : A simple C program that hashes user-input URLs      //
-// using SHA1 and stores them as files                               // 
-// in a structured cache directory based on the hash.                //
+// Title : System Programming Assignment #1-2 (proxy server)         //
+// Description : cache program hashes user-input URLs                //
+//               using SHA1 and stores them as files                 //
+//               in a structured cache directory based on the hash.  //
+//               Additionally, it logs cache HIT or MISS results     //
+//               to a logfile depending on outcome.                  //
 ///////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include <string.h>
@@ -35,6 +37,19 @@ int hit_count;
 int miss_count;
 FILE *log_fp;
 
+///////////////////////////////////////////////////////////////////////
+// vars_setting                                                      //
+// ================================================================= //
+// Input : void                                                      //
+// Output: void                                                      //
+// Purpose: Perform all initial setup before the main loop begins.   //
+//          - INIT start time for execution duration calculation     //
+//          - INIT hit/miss counters                                 //
+//          - Build paths for cache and log directories              //
+//          - Ensure cache and log directories exist (0777 perms)    //
+//          - Create logfile.txt if it does not exist                //
+//          - Open logfile in append mode using init_log()           //
+///////////////////////////////////////////////////////////////////////
 void vars_setting(){
     // time log init
     time(&start_time);

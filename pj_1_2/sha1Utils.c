@@ -33,3 +33,7 @@ char *sha1_hash(char *input_url, char *hashed_url){
 
     return hashed_url;
 }
+
+char *getName_hashed(char *hashed_url, int offset, int length){
+    
+}

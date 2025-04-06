@@ -9,7 +9,17 @@ const char* hit_format = "[Hit]%s-[%s]\n[Hit]%s\n";
 const char* miss_format = "[Miss]%s-[%s]\n";
 const char* termiante_format = "[Terminated] run time: %d sec. #request hit : %d, miss : %d\n";
 
-
+///////////////////////////////////////////////////////////////////////
+// is_file_hit                                                       //
+// ================================================================= //
+// Input: const char* dir  -> Directory path to search in            //
+//        const char* file -> File name to search for                //
+// Output: int                                                       //
+//          0 -> File does not exist (MISS)                          //
+//          1 -> File exists (HIT)                                   //
+// Purpose: Use opendir/readdir to determine if a specific file      //
+//          exists in the given directory.                           //
+///////////////////////////////////////////////////////////////////////
 int is_file_hit(const char* dir, const char* file) {
     DIR* dp = opendir(dir);
     if (dp == NULL) {
@@ -29,6 +39,15 @@ int is_file_hit(const char* dir, const char* file) {
     return 0; // MISS
 }
 
+///////////////////////////////////////////////////////////////////////
+// get_miss_log                                                      //
+// ================================================================= //
+// Input: const char* url -> Original URL input                      //
+// Output: char*                                                     //
+//         Dynamically allocated log string for MISS case            //
+// Purpose: Create formatted log string for MISS case including      //
+//          URL and timestamp.                                       //
+///////////////////////////////////////////////////////////////////////
 char* get_miss_log(const char* url) {
     // time set
     char time_buf[64];
@@ -46,6 +65,16 @@ char* get_miss_log(const char* url) {
     return result;
 }
 
+///////////////////////////////////////////////////////////////////////
+// get_hit_log                                                       //
+// ================================================================= //
+// Input: const char* hashed_path -> Hashed path string              //
+//        const char* url         -> Original URL input              //
+// Output: char*                                                     //
+//         Dynamically allocated log string for HIT case             //
+// Purpose: Create formatted log string for HIT case including       //
+//          hashed path, time, and original URL.                     //
+///////////////////////////////////////////////////////////////////////
 char* get_hit_log(const char* hashed_path, const char* url) {
     // time set
     char time_buf[64];
@@ -64,6 +93,18 @@ char* get_hit_log(const char* hashed_path, const char* url) {
     snprintf(result, needed, hit_format, hashed_path, time_buf, url);
     return result;
 }
+
+///////////////////////////////////////////////////////////////////////
+// get_terminated_log                                                //
+// ================================================================= //
+// Input: double process_sec -> Total execution time in seconds      //
+//        int hit_count      -> Total HIT count                      //
+//        int miss_count     -> Total MISS count                     //
+// Output: char*                                                     //
+//         Dynamically allocated termination log string              //
+// Purpose: Return a formatted string summarizing execution time     //
+//          and hit/miss statistics.                                 //
+///////////////////////////////////////////////////////////////////////
 char* get_terminated_log(double process_sec, int hit_count, int miss_count){
     // convert type to int
     int seconds = (int)process_sec;
