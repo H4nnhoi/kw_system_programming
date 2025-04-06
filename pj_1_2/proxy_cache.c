@@ -12,6 +12,7 @@
 ///////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "sha1Utils.h"
 #include "dirUtils.h"
 #include "fileUtils.h"
@@ -45,34 +46,49 @@ void vars_setting(){
     snprintf(log_full_path, MAX_INPUT, "%s/%s", logPath, logfileName);
     init_log(&log_fp, log_full_path);
 }
-int get_input_url(char* input){
+
+// * edit input to Dynamic Memory Allocation (not static allocation)
+char* get_input_url(){
     
     printf("input url> ");
-    fflush(stdout);  // 출력 버퍼 비우기 
+    size_t bufsize = MAX_INPUT;
+    char* buffer = malloc(bufsize);
+    if (!buffer) return NULL;
 
-    if (fgets(input, sizeof(input), stdin) == NULL) {       //insert url
-        printf("error from insert\n");
-        return 0;                                              // break when error from insert url
+    size_t len = 0;
+    int ch;
+
+    // loop while meet newline & EOF
+    // using getchar() method for input url
+    while ((ch = getchar()) != '\n' && ch != EOF) {
+        // need more bufsize, add it
+        if (len + 1 >= bufsize) {
+            bufsize *= 2;
+            char* new_buf = realloc(buffer, bufsize);
+            if (!new_buf) {
+                free(buffer);
+                return NULL;
+            }
+            buffer = new_buf;
+        }
+        buffer[len++] = (char)ch;
+        buffer[len] = '\0';
     }
 
-    // 개행 문자 제거
-    input[strcspn(input, "\n")] = '\0';
-
-    if (strcmp(input, "bye") == 0) {        // if insert is bye
-        close_log(&log_fp);
-        return 0;                              // over the program
-    }
-    return 1;
+    return buffer;
 }
 
+
+
 int main() {
-    char input[MAX_INPUT];
     vars_setting();
     
 
     while (1) {
         char hashed_url[41];
-        if(get_input_url(input) == 0) break;
+        char* input = get_input_url();
+        printf("input value = %s", input);
+        
         // get hashed URL using sha1_hash function
         sha1_hash(input, hashed_url);
         // printf("result hashed_url = %s\n", hashed_url);
