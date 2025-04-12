@@ -61,7 +61,7 @@ char* make_dir_path(const char* base_path, const char* subdir) {
     return full_path;
 }
 
-int get_input_cmd(char* cmd){
+int compare_input_cmd(char* cmd){
     
     if (strcmp(cmd, "connect") == 0) {      // CONNECT
         return 1;

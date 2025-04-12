@@ -16,16 +16,21 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "sha1Utils.h"
 #include "dirUtils.h"
 #include "fileUtils.h"
 #include "hit_and_miss.h"
-#include "stringUtils.h"
+#include "inputUtils.h"
 
 #define MAX_INPUT 256
 #define LOGFILE_NAME_SIZE 13 
 #define CACHE_DIR_SIZE 4
 #define FILE_SIZE 40
+#define CMD_REPEAT 1
+#define CMD_EXIT 0
+#define CMD_UNKNOWN -1
 
 char home[MAX_INPUT];
 char cachePath[MAX_INPUT];
@@ -36,6 +41,7 @@ time_t end_time;
 int hit_count;
 int miss_count;
 FILE *log_fp;
+pid_t PID;
 
 ///////////////////////////////////////////////////////////////////////
 // vars_setting                                                      //
@@ -74,28 +80,15 @@ void vars_setting(){
     init_log(&log_fp, log_full_path);
     free(log_full_path);
 }
-
-
-
-int main() {
-    vars_setting();
-    
-
-    while (1) {
-        char* input_cmd = get_input(MAX_INPUT);
-        int cmd_result = get_input_cmd(input_cmd);
-        if(cmd_result == 1){
-            // PROCESS START
-        }else if(cmd_result == 0){
-            // PROCESS END
-        }else{
-            perror("bad request of cmd");
-        }
-        char hashed_url[41];
+int child_process(){
+    char hashed_url[41];
         printf("input URL> ");
         char* input = get_input(MAX_INPUT);
         
-        if (input == NULL) break;       //TODO exception
+        if (input == NULL) {
+            perror("input is null");       //TODO exception
+            return -1;
+        }
         
         // printf("input value = %s\n", input);
 
@@ -105,8 +98,7 @@ int main() {
             printf("last log is %s\n", terminate_log);
             write_log_contents(&log_fp, terminate_log);
             free(terminate_log);
-            close_log(&log_fp);
-            break;
+            return 0;
         }
         
         // get hashed URL using sha1_hash function
@@ -150,7 +142,58 @@ int main() {
         free(input);                    
         free(subCachePath);
         free(log_contents);
-    }
+        return 1;
+}
 
+
+
+int main() {
+    vars_setting();
+    
+
+    while (1) {
+        printf("input CMD> ");
+        char* input_cmd = get_input(MAX_INPUT);
+        int cmd_result = get_input_cmd(input_cmd);
+
+        if (cmd_result == CMD_REPEAT) {
+            // PROCESS START
+            PID = fork();
+            if (PID < 0) {
+                perror("fork failed");
+                continue;
+            }
+
+            if (PID == 0) {
+                // Child process
+                while (1) {
+                    int process_result = child_process();
+
+                    if (process_result == CMD_EXIT) {
+                        break;
+                    } else if (process_result == CMD_REPEAT) {
+                        continue;
+                    } else {
+                        fprintf(stderr, "Unknown process result\n");
+                        break;
+                    }
+                }
+                exit(0); // exit child process
+            } else {
+                // Parent process: wait for all childs process exited
+                waitpid(PID, NULL, 0);
+            }
+
+        } else if (cmd_result == CMD_EXIT) {
+            // PROCESS END
+            printf("Terminating main process...\n");
+            break;
+        } else {
+            perror("Bad command input");
+        }
+        free(input_cmd);
+        
+    }
+    close_log(&log_fp);
     return 0;
 }
