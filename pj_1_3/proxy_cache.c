@@ -38,8 +38,10 @@ char logPath[MAX_INPUT];
 const char logfileName[LOGFILE_NAME_SIZE] = "logfile.txt";
 time_t start_time;
 time_t end_time;
+time_t sub_start_time;
 int hit_count;
 int miss_count;
+int sub_process_count;
 FILE *log_fp;
 pid_t PID;
 
@@ -81,68 +83,77 @@ void vars_setting(){
     free(log_full_path);
 }
 int child_process(){
+    // setting sub_process
     char hashed_url[41];
-        printf("input URL> ");
-        char* input = get_input(MAX_INPUT);
+    char subdir[CACHE_DIR_SIZE];
+    char fileName[FILE_SIZE];
+    char* input = NULL;
+    char* log_contents = NULL;
+    char* subCachePath = NULL;
+    
+    printf("[%d]input URL> ", getpid());
+    input = get_input(MAX_INPUT);
+
+    if (input == NULL) {
+        perror("input is null");
+        return CMD_UNKNOWN;
+    }
         
-        if (input == NULL) {
-            perror("input is null");       //TODO exception
-            return -1;
-        }
+    // end cmd
+    if (strcmp(input, "bye") == 0) {
+        time_t sub_end_time;
+        time(&sub_end_time);
+        char* terminate_log = get_terminated_log(difftime(sub_end_time, sub_start_time), hit_count, miss_count);
+        printf("last log is %s\n", terminate_log);
+        write_log_contents(&log_fp, terminate_log);
+        free(terminate_log);
+        free(input);
+        return CMD_EXIT;
+    }
         
-        // printf("input value = %s\n", input);
+     // get hashed URL using sha1_hash function
+    sha1_hash(input, hashed_url);
+    // printf("result hashed_url = %s\n", hashed_url);
 
-        if (strcmp(input, "bye") == 0) {
-            time(&end_time);
-            char* terminate_log = get_terminated_log(difftime(end_time, start_time), hit_count, miss_count);
-            printf("last log is %s\n", terminate_log);
-            write_log_contents(&log_fp, terminate_log);
-            free(terminate_log);
-            return 0;
-        }
-        
-        // get hashed URL using sha1_hash function
-        sha1_hash(input, hashed_url);
-        // printf("result hashed_url = %s\n", hashed_url);
+    // divide hashed_url
+    strncpy(subdir, hashed_url, 3);
+    subdir[3] = '\0';
 
-        // divide hashed_url
-        char subdir[CACHE_DIR_SIZE];
-        strncpy(subdir, hashed_url, 3);
-        subdir[3] = '\0';
+    // create file by divide hashed_url
+    // * edit file path range [3-40]
+    strncpy(fileName, hashed_url + 3, sizeof(fileName) - 1);
+    fileName[sizeof(fileName) - 1] = '\0'; 
 
-        // create file by divide hashed_url
-        // * edit file path range [3-40]
-        char fileName[FILE_SIZE];
-        strncpy(fileName, hashed_url + 3, sizeof(fileName) - 1);
-        fileName[sizeof(fileName) - 1] = '\0'; 
+    subCachePath = make_dir_path(cachePath, subdir);
 
-        char* subCachePath = make_dir_path(cachePath, subdir);
+    int hit_and_miss_result = is_file_hit(subCachePath, fileName);
 
-        int hit_and_miss_result = is_file_hit(subCachePath, fileName);
-        char* log_contents;
-
-        // HIT & MISS case
-        if(hit_and_miss_result == 0){      // MISS
-            log_contents = get_miss_log(input);
-            ensureDirExist(subCachePath, 0777);
-            createFile(subCachePath, fileName);
-            miss_count++;
-        }else if(hit_and_miss_result == 1){      // HIT
-            char* hashed_path = make_dir_path(subdir, fileName);
-            log_contents = get_hit_log(hashed_path, input);
-            free(hashed_path);
-            hit_count++;
-        }else{
-            perror("not range of return\n");
-        }
-        // printf("log contents = %s\n", log_contents);
-        write_log_contents(&log_fp, log_contents);
-
-       //free memory for dynamic allocation
-        free(input);                    
+     // HIT & MISS case
+    if(hit_and_miss_result == 0){      // MISS
+        log_contents = get_miss_log(input);
+        ensureDirExist(subCachePath, 0777);
+        createFile(subCachePath, fileName);
+        miss_count++;
+    }else if(hit_and_miss_result == 1){      // HIT
+        char* hashed_path = make_dir_path(subdir, fileName);
+        log_contents = get_hit_log(hashed_path, input);
+        free(hashed_path);
+        hit_count++;
+    }else{
+        perror("not range of return\n");
+        free(input);
         free(subCachePath);
-        free(log_contents);
-        return 1;
+        return CMD_UNKNOWN;
+    }
+    // printf("log contents = %s\n", log_contents);
+    write_log_contents(&log_fp, log_contents);
+
+    //free memory for dynamic allocation
+    free(input);                    
+    free(subCachePath);
+    free(log_contents);
+
+    return CMD_REPEAT;
 }
 
 
@@ -152,9 +163,9 @@ int main() {
     
 
     while (1) {
-        printf("input CMD> ");
+        printf("[%d]input CMD> ", getpid());
         char* input_cmd = get_input(MAX_INPUT);
-        int cmd_result = get_input_cmd(input_cmd);
+        int cmd_result = compare_input_cmd(input_cmd);
 
         if (cmd_result == CMD_REPEAT) {
             // PROCESS START
@@ -166,27 +177,30 @@ int main() {
 
             if (PID == 0) {
                 // Child process
+                time(&sub_start_time);
                 while (1) {
                     int process_result = child_process();
 
-                    if (process_result == CMD_EXIT) {
-                        break;
-                    } else if (process_result == CMD_REPEAT) {
-                        continue;
-                    } else {
-                        fprintf(stderr, "Unknown process result\n");
-                        break;
-                    }
+                    if (process_result == CMD_EXIT) break;
+                    if (process_result == CMD_REPEAT) continue;
+                    //EXCEPTION
+                    fprintf(stderr, "Unknown process result\n");
+                    break;
                 }
                 exit(0); // exit child process
             } else {
                 // Parent process: wait for all childs process exited
+                sub_process_count++;        //*** point ***
                 waitpid(PID, NULL, 0);
             }
 
         } else if (cmd_result == CMD_EXIT) {
             // PROCESS END
-            printf("Terminating main process...\n");
+            time(&end_time);
+            char* server_terminated_log = get_server_terminated_log(difftime(end_time, start_time), sub_process_count);
+            write_log_contents(&log_fp, server_terminated_log);
+            free(server_terminated_log);
+            close_log(&log_fp);
             break;
         } else {
             perror("Bad command input");
@@ -194,6 +208,6 @@ int main() {
         free(input_cmd);
         
     }
-    close_log(&log_fp);
+    
     return 0;
 }

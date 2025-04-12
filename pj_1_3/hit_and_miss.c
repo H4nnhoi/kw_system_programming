@@ -8,6 +8,7 @@
 const char* hit_format = "[Hit]%s-[%s]\n[Hit]%s\n";
 const char* miss_format = "[Miss]%s-[%s]\n";
 const char* termiante_format = "[Terminated] run time: %d sec. #request hit : %d, miss : %d\n";
+const char* server_termiante_format = "**SERVER** [Terminated] run time: %d sec. #sub process : %d\n";
 
 ///////////////////////////////////////////////////////////////////////
 // is_file_hit                                                       //
@@ -123,5 +124,24 @@ char* get_terminated_log(double process_sec, int hit_count, int miss_count){
     if (!result) return NULL;
 
     snprintf(result, needed, termiante_format, seconds, hit_count, miss_count);
+    return result;
+}
+
+char* get_server_terminated_log(double process_sec, int sub_process_count){
+    // convert type to int
+    int seconds = (int)process_sec;
+
+    // count only length (not save string)
+    int num_len_sec  = snprintf(NULL, 0, "%d", seconds);
+    int num_len_process  = snprintf(NULL, 0, "%d", sub_process_count);
+
+    size_t needed = strlen(server_termiante_format) - 4 +   // (%d * 2)
+                    num_len_sec +
+                    num_len_process + 1;           // count null
+
+    char* result = malloc(needed);
+    if (!result) return NULL;
+
+    snprintf(result, needed, server_termiante_format, seconds, sub_process_count);
     return result;
 }
