@@ -3,7 +3,8 @@
 
 #include <stddef.h> 
 
-char* get_input_url(int init_buf_size);
+char* get_input(int init_buf_size);
 char* make_dir_path(const char* base_path, const char* subdir);
+int get_input_cmd(char* cmd);
 
 #endif

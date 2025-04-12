@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MAX_INPUT 256
+
+
 ///////////////////////////////////////////////////////////////////////
 // get_input_url                                                     //
 // ================================================================= //
@@ -12,9 +15,8 @@
 //          Returns a malloc'ed string, Caller must free it.         //
 ///////////////////////////////////////////////////////////////////////
 // * edit input to Dynamic Memory Allocation (not static allocation)
-char* get_input_url(int init_buf_size){
+char* get_input(int init_buf_size){
     
-    printf("input url> ");
     size_t bufsize = init_buf_size;
     char* buffer = malloc(bufsize);
     if (!buffer) return NULL;
@@ -57,4 +59,16 @@ char* make_dir_path(const char* base_path, const char* subdir) {
 
     snprintf(full_path, needed_size, "%s/%s", base_path, subdir);
     return full_path;
+}
+
+int get_input_cmd(char* cmd){
+    
+    if (strcmp(cmd, "connect") == 0) {      // CONNECT
+        return 1;
+    } else if (strcmp(cmd, "quit") == 0) {  // QUIT
+        return 0;
+    } 
+    
+    return -1;          //exception
+
 }

@@ -82,8 +82,18 @@ int main() {
     
 
     while (1) {
+        char* input_cmd = get_input(MAX_INPUT);
+        int cmd_result = get_input_cmd(input_cmd);
+        if(cmd_result == 1){
+            // PROCESS START
+        }else if(cmd_result == 0){
+            // PROCESS END
+        }else{
+            perror("bad request of cmd");
+        }
         char hashed_url[41];
-        char* input = get_input_url(MAX_INPUT);
+        printf("input URL> ");
+        char* input = get_input(MAX_INPUT);
         
         if (input == NULL) break;       //TODO exception
         
