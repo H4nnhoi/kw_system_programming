@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "home_dir_utils.h": "c",
+        "timeutils.h": "c",
+        "hit_and_miss.h": "c",
+        "fileutils.h": "c"
+    }
+}
