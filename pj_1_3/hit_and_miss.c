@@ -127,6 +127,18 @@ char* get_terminated_log(double process_sec, int hit_count, int miss_count){
     return result;
 }
 
+///////////////////////////////////////////////////////////////////////
+// get_server_terminated_log                                         //
+// ================================================================= //
+// Input : double process_sec         -> Total server uptime (sec)   //
+//         int sub_process_count      -> Total number of forked      //
+//                                       child processes             //
+// Output: char*                      -> Dynamically allocated       //
+//                                       formatted log string        //
+// Purpose: Generate a formatted log string summarizing              //
+//          the total execution time and number of created           //
+//          child processes during the server runtime.               //
+///////////////////////////////////////////////////////////////////////
 char* get_server_terminated_log(double process_sec, int sub_process_count){
     // convert type to int
     int seconds = (int)process_sec;

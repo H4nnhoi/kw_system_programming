@@ -61,6 +61,17 @@ char* make_dir_path(const char* base_path, const char* subdir) {
     return full_path;
 }
 
+///////////////////////////////////////////////////////////////////////
+// compare_input_cmd                                                 //
+// ================================================================= //
+// Input : char* cmd  -> User input command string                   //
+// Output: int        -> Parsed result                               //
+//                      1 : "connect" command                        //
+//                      0 : "quit" command                           //
+//                     -1 : Unknown or invalid command               //
+// Purpose: Determine the type of user command input and return      //
+//          a corresponding integer code to control program flow.    //
+///////////////////////////////////////////////////////////////////////
 int compare_input_cmd(char* cmd){
     
     if (strcmp(cmd, "connect") == 0) {      // CONNECT

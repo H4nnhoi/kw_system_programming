@@ -5,12 +5,17 @@
 // Author : Lee Jeong Han                                            //
 // Student ID : 2020202047                                           //
 // ----------------------------------------------------------------- //
-// Title : System Programming Assignment #1-2 (proxy server)         //
-// Description : cache program hashes user-input URLs                //
-//               using SHA1 and stores them as files                 //
-//               in a structured cache directory based on the hash.  //
-//               Additionally, it logs cache HIT or MISS results     //
-//               to a logfile depending on outcome.                  //
+// Title : System Programming Assignment #1-3 (proxy server)         //
+// Description : This program receives user commands and URLs,       //
+//               creates a child process using fork() to perform     //
+//               the main task, and separates control and logic      //
+//               between parent and child processes.                 //
+//               Each input URL is hashed using SHA1 and stored      //
+//               as a file in a structured cache directory.          //
+//               The program logs whether a cache HIT or MISS        //
+//               occurred, and tracks runtime and process counts.    //
+//               Each process's PID is displayed to help identify    //
+//               and trace execution.                                //
 ///////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include <string.h>
@@ -50,12 +55,12 @@ pid_t PID;
 // ================================================================= //
 // Input : void                                                      //
 // Output: void                                                      //
-// Purpose: Perform all initial setup before the main loop begins.   //
-//          - INIT start time for execution duration calculation     //
-//          - INIT hit/miss counters                                 //
-//          - Build paths for cache and log directories              //
-//          - Ensure cache and log directories exist (0777 perms)    //
-//          - Create logfile.txt if it does not exist                //
+// Purpose: Perform all initial setup before the main loop begins.  //
+//          - Set start time for uptime tracking                     //
+//          - Initialize hit/miss counters                           //
+//          - Generate paths for cache and log directories           //
+//          - Create directories if they don't exist (0777 perms)    //
+//          - Create logfile.txt if missing                          //
 //          - Open logfile in append mode using init_log()           //
 ///////////////////////////////////////////////////////////////////////
 void vars_setting(){
@@ -82,6 +87,17 @@ void vars_setting(){
     init_log(&log_fp, log_full_path);
     free(log_full_path);
 }
+
+///////////////////////////////////////////////////////////////////////
+// child_process                                                     //
+// ================================================================= //
+// Input : void                                                      //
+// Output: int CMD_EXIT / CMD_REPEAT / CMD_UNKNOWN                   //
+// Purpose: Handles one cycle of URL input, SHA1 hashing, cache      //
+//          checking, file writing, and HIT/MISS logging.            //
+//          When user inputs "bye", process ends and termination     //
+//          log is generated.                                        //
+///////////////////////////////////////////////////////////////////////
 int child_process(){
     // setting sub_process
     char hashed_url[41];
@@ -104,7 +120,6 @@ int child_process(){
         time_t sub_end_time;
         time(&sub_end_time);
         char* terminate_log = get_terminated_log(difftime(sub_end_time, sub_start_time), hit_count, miss_count);
-        printf("last log is %s\n", terminate_log);
         write_log_contents(&log_fp, terminate_log);
         free(terminate_log);
         free(input);
@@ -113,7 +128,6 @@ int child_process(){
         
      // get hashed URL using sha1_hash function
     sha1_hash(input, hashed_url);
-    // printf("result hashed_url = %s\n", hashed_url);
 
     // divide hashed_url
     strncpy(subdir, hashed_url, 3);
@@ -145,7 +159,6 @@ int child_process(){
         free(subCachePath);
         return CMD_UNKNOWN;
     }
-    // printf("log contents = %s\n", log_contents);
     write_log_contents(&log_fp, log_contents);
 
     //free memory for dynamic allocation
@@ -157,7 +170,20 @@ int child_process(){
 }
 
 
-
+///////////////////////////////////////////////////////////////////////
+// main                                                              //
+// ================================================================= //
+// Input : void                                                      //
+// Output: int (always 0)                                            //
+// Purpose: Main control loop of the proxy cache program.            //
+//          - Initializes variables and directories                  //
+//          - Repeatedly accepts user command input ("connect"/"quit")
+//          - Forks a child process if "connect"                     //
+//          - Tracks number of child processes created               //
+//          - Waits for child to complete each time                  //
+//          - Logs final statistics and shuts down on "quit"         //
+//          - Displays each prompt with the current process ID       //
+///////////////////////////////////////////////////////////////////////
 int main() {
     vars_setting();
     
@@ -166,6 +192,11 @@ int main() {
         printf("[%d]input CMD> ", getpid());
         char* input_cmd = get_input(MAX_INPUT);
         int cmd_result = compare_input_cmd(input_cmd);
+
+        if (input_cmd == NULL) {
+            perror("input_cmd is null");
+            continue;
+        }
 
         if (cmd_result == CMD_REPEAT) {
             // PROCESS START
