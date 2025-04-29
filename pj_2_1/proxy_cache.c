@@ -1,22 +1,3 @@
-///////////////////////////////////////////////////////////////////////
-// File Name : Main.c                                                //
-// Date : 2025/03/30                                                 //
-// Os : Ubuntu 16.04 LTS 64bits                                      //
-// Author : Lee Jeong Han                                            //
-// Student ID : 2020202047                                           //
-// ----------------------------------------------------------------- //
-// Title : System Programming Assignment #1-3 (proxy server)         //
-// Description : This program receives user commands and URLs,       //
-//               creates a child process using fork() to perform     //
-//               the main task, and separates control and logic      //
-//               between parent and child processes.                 //
-//               Each input URL is hashed using SHA1 and stored      //
-//               as a file in a structured cache directory.          //
-//               The program logs whether a cache HIT or MISS        //
-//               occurred, and tracks runtime and process counts.    //
-//               Each process's PID is displayed to help identify    //
-//               and trace execution.                                //
-///////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -50,19 +31,7 @@ int sub_process_count;
 FILE *log_fp;
 pid_t PID;
 
-///////////////////////////////////////////////////////////////////////
-// vars_setting                                                      //
-// ================================================================= //
-// Input : void                                                      //
-// Output: void                                                      //
-// Purpose: Perform all initial setup before the main loop begins.  //
-//          - Set start time for uptime tracking                     //
-//          - Initialize hit/miss counters                           //
-//          - Generate paths for cache and log directories           //
-//          - Create directories if they don't exist (0777 perms)    //
-//          - Create logfile.txt if missing                          //
-//          - Open logfile in append mode using init_log()           //
-///////////////////////////////////////////////////////////////////////
+
 void vars_setting(){
     // time log init
     time(&start_time);
@@ -98,7 +67,8 @@ void vars_setting(){
 //          When user inputs "bye", process ends and termination     //
 //          log is generated.                                        //
 ///////////////////////////////////////////////////////////////////////
-int child_process(){
+int sub_process(pid_t* PID){
+    vars_setting();
     // setting sub_process
     char hashed_url[41];
     char subdir[CACHE_DIR_SIZE];
@@ -106,139 +76,68 @@ int child_process(){
     char* input = NULL;
     char* log_contents = NULL;
     char* subCachePath = NULL;
-    
-    printf("[%d]input URL> ", getpid());
-    input = get_input(MAX_INPUT);
+    while(1){
+        printf("input URL> ");
+        input = get_input(MAX_INPUT);
 
-    if (input == NULL) {
-        perror("input is null");
-        return CMD_UNKNOWN;
-    }
-        
-    // end cmd
-    if (strcmp(input, "bye") == 0) {
-        time_t sub_end_time;
-        time(&sub_end_time);
-        char* terminate_log = get_terminated_log(difftime(sub_end_time, sub_start_time), hit_count, miss_count);
-        write_log_contents(&log_fp, terminate_log);
-        free(terminate_log);
-        free(input);
-        return CMD_EXIT;
-    }
-        
-     // get hashed URL using sha1_hash function
-    sha1_hash(input, hashed_url);
+        if (input == NULL) {
+            perror("input is null");
+            return CMD_UNKNOWN;
+        }
+            
+        // end cmd
+        if (strcmp(input, "bye") == 0) {
+            time_t sub_end_time;
+            time(&sub_end_time);
+            char* terminate_log = get_terminated_log(difftime(sub_end_time, sub_start_time), hit_count, miss_count);
+            write_log_contents(&log_fp, terminate_log);
+            free(terminate_log);
+            free(input);
+            free(&log_fp);
+            return CMD_EXIT;
+        }
+            
+        // get hashed URL using sha1_hash function
+        sha1_hash(input, hashed_url);
 
-    // divide hashed_url
-    strncpy(subdir, hashed_url, 3);
-    subdir[3] = '\0';
+        // divide hashed_url
+        strncpy(subdir, hashed_url, 3);
+        subdir[3] = '\0';
 
-    // create file by divide hashed_url
-    // * edit file path range [3-40]
-    strncpy(fileName, hashed_url + 3, sizeof(fileName) - 1);
-    fileName[sizeof(fileName) - 1] = '\0'; 
+        // create file by divide hashed_url
+        // * edit file path range [3-40]
+        strncpy(fileName, hashed_url + 3, sizeof(fileName) - 1);
+        fileName[sizeof(fileName) - 1] = '\0'; 
 
-    subCachePath = make_dir_path(cachePath, subdir);
+        subCachePath = make_dir_path(cachePath, subdir);
 
-    int hit_and_miss_result = is_file_hit(subCachePath, fileName);
+        int hit_and_miss_result = is_file_hit(subCachePath, fileName);
 
-     // HIT & MISS case
-    if(hit_and_miss_result == 0){      // MISS
-        log_contents = get_miss_log(input);
-        ensureDirExist(subCachePath, 0777);
-        createFile(subCachePath, fileName);
-        miss_count++;
-    }else if(hit_and_miss_result == 1){      // HIT
-        char* hashed_path = make_dir_path(subdir, fileName);
-        log_contents = get_hit_log(hashed_path, input);
-        free(hashed_path);
-        hit_count++;
-    }else{
-        perror("not range of return\n");
-        free(input);
+        // HIT & MISS case
+        if(hit_and_miss_result == 0){      // MISS
+            log_contents = get_miss_log(input);
+            ensureDirExist(subCachePath, 0777);
+            createFile(subCachePath, fileName);
+            miss_count++;
+        }else if(hit_and_miss_result == 1){      // HIT
+            char* hashed_path = make_dir_path(subdir, fileName);
+            log_contents = get_hit_log(hashed_path, input);
+            free(hashed_path);
+            hit_count++;
+        }else{
+            perror("not range of return\n");
+            free(input);
+            free(subCachePath);
+            return CMD_UNKNOWN;
+        }
+        write_log_contents(&log_fp, log_contents);
+
+        //free memory for dynamic allocation
+        free(input);                    
         free(subCachePath);
-        return CMD_UNKNOWN;
+        free(log_contents);
     }
-    write_log_contents(&log_fp, log_contents);
-
-    //free memory for dynamic allocation
-    free(input);                    
-    free(subCachePath);
-    free(log_contents);
-
-    return CMD_REPEAT;
-}
-
-
-///////////////////////////////////////////////////////////////////////
-// main                                                              //
-// ================================================================= //
-// Input : void                                                      //
-// Output: int (always 0)                                            //
-// Purpose: Main control loop of the proxy cache program.            //
-//          - Initializes variables and directories                  //
-//          - Repeatedly accepts user command input ("connect"/"quit")
-//          - Forks a child process if "connect"                     //
-//          - Tracks number of child processes created               //
-//          - Waits for child to complete each time                  //
-//          - Logs final statistics and shuts down on "quit"         //
-//          - Displays each prompt with the current process ID       //
-///////////////////////////////////////////////////////////////////////
-int main() {
-    vars_setting();
+    return CMD_UNKNOWN;
     
-
-    while (1) {
-        printf("[%d]input CMD> ", getpid());
-        char* input_cmd = get_input(MAX_INPUT);
-        int cmd_result = compare_input_cmd(input_cmd);
-
-        if (input_cmd == NULL) {
-            perror("input_cmd is null");
-            continue;
-        }
-
-        if (cmd_result == CMD_REPEAT) {
-            // PROCESS START
-            PID = fork();
-            if (PID < 0) {
-                perror("fork failed");
-                continue;
-            }
-
-            if (PID == 0) {
-                // Child process
-                time(&sub_start_time);
-                while (1) {
-                    int process_result = child_process();
-
-                    if (process_result == CMD_EXIT) break;
-                    if (process_result == CMD_REPEAT) continue;
-                    //EXCEPTION
-                    fprintf(stderr, "Unknown process result\n");
-                    break;
-                }
-                exit(0); // exit child process
-            } else {
-                // Parent process: wait for all childs process exited
-                sub_process_count++;        //*** point ***
-                waitpid(PID, NULL, 0);
-            }
-
-        } else if (cmd_result == CMD_EXIT) {
-            // PROCESS END
-            time(&end_time);
-            char* server_terminated_log = get_server_terminated_log(difftime(end_time, start_time), sub_process_count);
-            write_log_contents(&log_fp, server_terminated_log);
-            free(server_terminated_log);
-            close_log(&log_fp);
-            break;
-        } else {
-            perror("Bad command input");
-        }
-        free(input_cmd);
-        
-    }
     
-    return 0;
 }
