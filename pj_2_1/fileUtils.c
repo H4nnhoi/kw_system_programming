@@ -56,27 +56,27 @@ void init_log(FILE **log_fp, const char* fullPath){
 ///////////////////////////////////////////////////////////////////////
 // close_log                                                         //
 // ================================================================= //
-// Input: FILE** log_fp -> Pointer to the log file stream            //
+// Input: FILE* log_fp -> Pointer to the log file stream            //
 // Output: void                                                      //
 // Purpose: Safely close the opened log file if it exists.           //
 ///////////////////////////////////////////////////////////////////////
-void close_log(FILE **log_fp) {
-    if (*log_fp != NULL) fclose(*log_fp);
+void close_log(FILE *log_fp) {
+    if (log_fp != NULL) fclose(log_fp);
 }
 
 ///////////////////////////////////////////////////////////////////////
 // write_log_contents                                                //
 // ================================================================= //
-// Input: FILE** log_fp      -> Pointer to the log file stream       //
+// Input: FILE* log_fp      -> Pointer to the log file stream       //
 //        const char* contents    -> Log contents to write           //
 // Output: void                                                      //
 // Purpose: Write given log string into the log file immediately     //
 //          using fflush to flush the stream.                        //
 ///////////////////////////////////////////////////////////////////////
-void write_log_contents(FILE **log_fp, const char *contents){    
-    if (*log_fp != NULL) {
-        fprintf(*log_fp, "%s", contents);
-        fflush(*log_fp);         //immediately write
+void write_log_contents(FILE *log_fp, const char *contents){    
+    if (log_fp != NULL) {
+        fprintf(log_fp, "%s", contents);
+        fflush(log_fp);         //immediately write
     }
 
 }

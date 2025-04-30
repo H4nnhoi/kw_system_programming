@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
+#include "inputUtils.h"
 
 #define BUFFSIZE 1024
 #define PORTNO 40000
@@ -34,16 +36,17 @@ int main() {
         return -1;
     }
 
-    // 통신 시작
-    write(STDOUT_FILENO, "> ", 2);
-    while ((len = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
-        if (write(socket_fd, buf, strlen(buf)) > 0) {
-            if ((len = read(socket_fd, buf, sizeof(buf))) > 0) {
-                write(STDOUT_FILENO, buf, len);
-                bzero(buf, sizeof(buf));
-            }
+    while(1){
+        printf("input URL> ");
+        char *sendURL = get_input(BUFFSIZE);
+        len = strlen(sendURL) + 1;
+        send(socket_fd, &len, sizeof(int), 0);
+        send(socket_fd, sendURL, len, 0);
+        if(strcmp(sendURL, "bye") == 0){
+            free(sendURL);
+            break;
         }
-        write(STDOUT_FILENO, "> ", 2);
+        free(sendURL);
     }
 
     close(socket_fd);
