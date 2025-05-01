@@ -21,8 +21,9 @@
 #define LOGFILE_NAME_SIZE 13 
 #define CACHE_DIR_SIZE 4
 #define FILE_SIZE 40
-#define PROCESS_REPEAT 1
-#define PROCESS_EXIT 0
+#define PROCESS_HIT 1
+#define PROCESS_MISS 0
+#define PROCESS_EXIT 7
 #define PROCESS_UNKNOWN -1
 
 char home[MAX_INPUT];
@@ -36,7 +37,6 @@ int hit_count;
 int miss_count;
 int sub_process_count;
 FILE *log_fp;
-pid_t PID;
 
 
 void vars_setting(){
@@ -130,7 +130,13 @@ int main() {
                 else if(result == PROCESS_UNKNOWN){
                     perror("Error of subprocess");
                     break;
-                }else if(result == PROCESS_REPEAT) continue;
+                }else if(result == PROCESS_HIT){
+                    send(client_fd, "HIT\n", strlen("HIT\n"), 0);
+                    continue;
+                }else if(result == PROCESS_MISS){
+                    send(client_fd, "MISS\n", strlen("MISS\n"), 0);
+                    continue;
+                } 
             }
 
             printf("[%d : %d] client was disconnected\n", client_addr.sin_addr.s_addr, client_addr.sin_port);
@@ -138,7 +144,6 @@ int main() {
             exit(0);
         }
         close(client_fd);  // 부모 프로세스는 클라이언트 소켓 닫음
-        while (waitpid(-1, NULL, WNOHANG) > 0);
     }
     close(socket_fd);
     return 0;

@@ -2,12 +2,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <dirent.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "hit_and_miss.h"
 #include "timeUtils.h"
 
-const char* hit_format = "[Hit]%s-[%s]\n[Hit]%s\n";
-const char* miss_format = "[Miss]%s-[%s]\n";
-const char* termiante_format = "[Terminated] run time: %d sec. #request hit : %d, miss : %d\n";
+const char* hit_format = "[Hit] Server PID : %d | %s-[%s]\n[Hit]%s\n";
+const char* miss_format = "[Miss] Server PID : %d | %s-[%s]\n";
+const char* termiante_format = "[Terminated] Server PID : %d | run time: %d sec. #request hit : %d, miss : %d\n";
 const char* server_termiante_format = "**SERVER** [Terminated] run time: %d sec. #sub process : %d\n";
 
 ///////////////////////////////////////////////////////////////////////
@@ -53,16 +55,18 @@ char* get_miss_log(const char* url) {
     // time set
     char time_buf[64];
     get_formatted_time(time_buf, sizeof(time_buf));
+    int pid_length = snprintf(NULL, 0, "%d", getpid());
 
     // contents set
-    size_t needed = strlen(miss_format) - 4 +   // (%s * 2)
+    size_t needed = strlen(miss_format) - 6 +   // (%s * 2 + %d * 1)
                     strlen(time_buf) +
-                    strlen(url) + 1;           // count null
+                    strlen(url) +
+                    pid_length + 1;           // count null
     char* result = malloc(needed);
     if (!result) return NULL;
 
     // get result of miss case
-    snprintf(result, needed, miss_format, url, time_buf);
+    snprintf(result, needed, miss_format, getpid(), url, time_buf);
     return result;
 }
 
@@ -80,18 +84,21 @@ char* get_hit_log(const char* hashed_path, const char* url) {
     // time set
     char time_buf[64];
     get_formatted_time(time_buf, sizeof(time_buf));
+    int pid_length = snprintf(NULL, 0, "%d", getpid());
+
 
     // contents set
-    size_t needed = strlen(hit_format) - 6 +   // (%s * 3)
+    size_t needed = strlen(hit_format) - 8 +   // (%s * 3 + %d * 1)
                     strlen(hashed_path) +
                     strlen(time_buf) +
-                    strlen(url) + 1;           // count null
+                    strlen(url) +
+                    pid_length + 1;           // count null
 
     char* result = malloc(needed);
     if (!result) return NULL;
 
     // get result of hit case
-    snprintf(result, needed, hit_format, hashed_path, time_buf, url);
+    snprintf(result, needed, hit_format, getpid(), hashed_path, time_buf, url);
     return result;
 }
 
@@ -114,16 +121,19 @@ char* get_terminated_log(double process_sec, int hit_count, int miss_count){
     int num_len_sec  = snprintf(NULL, 0, "%d", seconds);
     int num_len_hit  = snprintf(NULL, 0, "%d", hit_count);
     int num_len_miss = snprintf(NULL, 0, "%d", miss_count);
+    int pid_length = snprintf(NULL, 0, "%d", getpid());
 
-    size_t needed = strlen(termiante_format) - 6 +   // (%d * 3)
+
+    size_t needed = strlen(termiante_format) - 8 +   // (%d * 4)
                     num_len_sec +
                     num_len_hit +
-                    num_len_miss + 1;           // count null
+                    num_len_miss +
+                    pid_length + 1;           // count null
 
     char* result = malloc(needed);
     if (!result) return NULL;
 
-    snprintf(result, needed, termiante_format, seconds, hit_count, miss_count);
+    snprintf(result, needed, termiante_format, getpid(), seconds, hit_count, miss_count);
     return result;
 }
 

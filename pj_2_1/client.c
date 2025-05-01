@@ -46,6 +46,11 @@ int main() {
             free(sendURL);
             break;
         }
+        // get message HIT or MISS case from server & print
+        char recv_buf[16];
+        int n = recv(socket_fd, recv_buf, sizeof(recv_buf) - 1, 0);
+        recv_buf[n] = '\0';
+        printf("%s", recv_buf);
         free(sendURL);
     }
 

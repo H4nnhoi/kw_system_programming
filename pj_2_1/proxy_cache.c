@@ -14,9 +14,10 @@
 #define LOGFILE_NAME_SIZE 13 
 #define CACHE_DIR_SIZE 4
 #define FILE_SIZE 40
-#define CMD_REPEAT 1
-#define CMD_EXIT 0
-#define CMD_UNKNOWN -1
+#define PROCESS_HIT 1
+#define PROCESS_MISS 0
+#define PROCESS_EXIT 7
+#define PROCESS_UNKNOWN -1
 
 
 int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time, int *hit_count, int *miss_count){
@@ -30,7 +31,7 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
 
     if (input_url == NULL) {
         perror("input is null");
-        return CMD_UNKNOWN;
+        return PROCESS_UNKNOWN;
     }
             
     // end cmd
@@ -40,7 +41,7 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
         char* terminate_log = get_terminated_log(difftime(sub_end_time, sub_start_time), *hit_count, *miss_count);
         write_log_contents(log_fp, terminate_log);
         free(terminate_log);
-         return CMD_EXIT;        
+         return PROCESS_EXIT;        
     }
             
     // get hashed URL using sha1_hash function
@@ -60,12 +61,12 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
     int hit_and_miss_result = is_file_hit(subCachePath, fileName);
 
     // HIT & MISS case
-    if(hit_and_miss_result == 0){      // MISS
+    if(hit_and_miss_result == PROCESS_MISS){      // MISS
         log_contents = get_miss_log(input_url);
         ensureDirExist(subCachePath, 0777);
         createFile(subCachePath, fileName);
         (*miss_count)++;
-    }else if(hit_and_miss_result == 1){      // HIT
+    }else if(hit_and_miss_result == PROCESS_HIT){      // HIT
         char* hashed_path = make_dir_path(subdir, fileName);
         log_contents = get_hit_log(hashed_path, input_url);
         free(hashed_path);
@@ -74,13 +75,13 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
         perror("not range of return\n");
         free(input_url);
         free(subCachePath);
-        return CMD_UNKNOWN;
+        return PROCESS_UNKNOWN;
     }
     write_log_contents(log_fp, log_contents);
 
     //free memory for dynamic allocation
     free(subCachePath);
     free(log_contents);
-    printf("test1\n");
-    return CMD_REPEAT;
+    
+    return hit_and_miss_result;
 }
