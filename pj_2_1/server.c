@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <arpa/inet.h> 
 #include "proxy_cache.h"
 #include "dirUtils.h"
 #include "fileUtils.h"
@@ -75,6 +76,7 @@ int main() {
     int socket_fd, client_fd;
     int len, len_out;
     char buf[BUFFSIZE];
+    char hadddr[] = "127.0.0.1";
     pid_t pid;
     vars_setting();
 
@@ -85,7 +87,7 @@ int main() {
 
     bzero((char*)&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_addr.sin_addr.s_addr = inet_addr(hadddr);
     server_addr.sin_port = htons(PORTNO);
 
     if (bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
@@ -108,7 +110,7 @@ int main() {
             return 0;
         }
 
-        printf("[%d : %d] client was connected\n", client_addr.sin_addr.s_addr, client_addr.sin_port);
+        printf("[%s : %d] client was connected\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port);
         pid = fork();
 
         if (pid == -1) {
