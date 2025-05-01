@@ -44,12 +44,14 @@ int is_file_hit(const char* dir, const char* file) {
 
 ///////////////////////////////////////////////////////////////////////
 // get_miss_log                                                      //
-// ================================================================= //
-// Input: const char* url -> Original URL input                      //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - url : Original URL string that caused a cache MISS            //
 // Output: char*                                                     //
-//         Dynamically allocated log string for MISS case            //
-// Purpose: Create formatted log string for MISS case including      //
-//          URL and timestamp.                                       //
+//   - Dynamically allocated string containing the formatted log     //
+// Purpose:                                                          //
+//   - Generates a log message for a cache MISS, including the       //
+//     current process PID, timestamp, and URL                       //
 ///////////////////////////////////////////////////////////////////////
 char* get_miss_log(const char* url) {
     // time set
@@ -72,13 +74,15 @@ char* get_miss_log(const char* url) {
 
 ///////////////////////////////////////////////////////////////////////
 // get_hit_log                                                       //
-// ================================================================= //
-// Input: const char* hashed_path -> Hashed path string              //
-//        const char* url         -> Original URL input              //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - const char* hashed_path : Hashed file path used for cache HIT //
+//   - const char* url         : Original URL string                 //
 // Output: char*                                                     //
-//         Dynamically allocated log string for HIT case             //
-// Purpose: Create formatted log string for HIT case including       //
-//          hashed path, time, and original URL.                     //
+//   - Dynamically allocated string containing the formatted log     //
+// Purpose:                                                          //
+//   - Generates a log message for a cache HIT, including the        //
+//     process PID, hashed path, timestamp, and original URL         //
 ///////////////////////////////////////////////////////////////////////
 char* get_hit_log(const char* hashed_path, const char* url) {
     // time set
@@ -102,17 +106,20 @@ char* get_hit_log(const char* hashed_path, const char* url) {
     return result;
 }
 
-///////////////////////////////////////////////////////////////////////
-// get_terminated_log                                                //
-// ================================================================= //
-// Input: double process_sec -> Total execution time in seconds      //
-//        int hit_count      -> Total HIT count                      //
-//        int miss_count     -> Total MISS count                     //
-// Output: char*                                                     //
-//         Dynamically allocated termination log string              //
-// Purpose: Return a formatted string summarizing execution time     //
-//          and hit/miss statistics.                                 //
-///////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// get_terminated_log                                                         //
+////////////////////////////////////////////////////////////////////////////////
+// Input:                                                                     //
+//   - double process_sec : Elapsed time (in seconds) since process started   //
+//   - int hit_count   : Number of cache HITs during the process              //
+//   - int miss_count  : Number of cache MISSes during the process            //
+// Output: char*                                                              //
+//   - Dynamically allocated string containing the formatted log              //
+// Purpose:                                                                   //
+//   - Generates a termination log message including PID, runtime,            //
+//     HIT and MISS statistics                                                //
+////////////////////////////////////////////////////////////////////////////////
 char* get_terminated_log(double process_sec, int hit_count, int miss_count){
     // convert type to int
     int seconds = (int)process_sec;

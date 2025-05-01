@@ -11,6 +11,22 @@
 #define BUFFSIZE 1024
 #define PORTNO 40000
 
+///////////////////////////////////////////////////////////////////////
+// File Name : client.c                                              //
+// Date      : 2025/04/30                                            //
+// OS        : Ubuntu / macOS                                        //
+// Author    : (Your Name)                                           //
+// ----------------------------------------------------------------- //
+// Title     : System Programming Assignment #1-3 (Proxy Client)     //
+// Description :                                                     //
+//   This client program connects to a proxy server via TCP.         //
+//   It reads user-input URLs, sends them to the server, and         //
+//   receives HIT or MISS status responses. The communication        //
+//   is done by sending the length and content of the URL, and       //
+//   receiving response strings ("HIT\n" or "MISS\n"). When          //
+//   "bye" is input, the connection is terminated.                   //
+///////////////////////////////////////////////////////////////////////
+
 int main() {
     int socket_fd, len;
     struct sockaddr_in server_addr;

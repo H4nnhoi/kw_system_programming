@@ -39,7 +39,17 @@ int miss_count;
 int sub_process_count;
 FILE *log_fp;
 
-
+///////////////////////////////////////////////////////////////////////
+// vars_setting                                                      //
+///////////////////////////////////////////////////////////////////////
+// Input:    None                                                    //
+// Output:   None                                                    //
+// Purpose:                                                          //
+//   - Initializes global variables and time tracking                //
+//   - Prepares cache and log directories                            //
+//   - Checks if logfile exists, creates it if not                   //
+//   - Opens the logfile in append mode using init_log()             //
+///////////////////////////////////////////////////////////////////////
 void vars_setting(){
     // time log init
     time(&start_time);
@@ -64,13 +74,37 @@ void vars_setting(){
     init_log(&log_fp, log_full_path);
     free(log_full_path);
 }
-
+///////////////////////////////////////////////////////////////////////
+// handler                                                           //
+///////////////////////////////////////////////////////////////////////
+// Input:    None                                                    //
+// Output:   None                                                    //
+// Purpose:                                                          //
+//   - Handles SIGCHLD signal by reaping zombie child processes      //
+//   - Uses waitpid() with WNOHANG to clean up non-blockingly        //
+///////////////////////////////////////////////////////////////////////
 static void handler() {
     pid_t pid;
     int status;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0);
 }
 
+///////////////////////////////////////////////////////////////////////
+// File Name : server.c                                              //
+// Date      : 2025/04/30                                            //
+// OS        : Ubuntu / macOS                                        //
+// Author    : (Your Name)                                           //
+// ----------------------------------------------------------------- //
+// Title     : System Programming Assignment #1-3 (Proxy Server)     //
+// Description :                                                     //
+//   This server program implements a simple HTTP proxy server       //
+//   that receives URLs from clients over a TCP connection.          //
+//   Each request is handled by a forked child process.              //
+//   - URLs are hashed using SHA1 and checked in a cache directory   //
+//   - HIT or MISS is logged and responded to the client             //
+//   - Logs include timestamps and PIDs for tracking                 //
+//   - The server gracefully handles termination via signals         //
+///////////////////////////////////////////////////////////////////////
 int main() {
     struct sockaddr_in server_addr, client_addr;
     int socket_fd, client_fd;
