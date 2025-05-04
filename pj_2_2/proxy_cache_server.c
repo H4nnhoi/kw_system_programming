@@ -5,6 +5,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <time.h>
+#include <stdlib.h>
+#include <ifaddrs.h>
+#include <net/if.h> 
+
+#include "sub_process.h"
+#include "dirUtils.h"
+#include "fileUtils.h"
+#include "hit_and_miss.h"
+#include "inputUtils.h"
 
 #define BUFFSIZE 1024
 #define PORTNO 40000
@@ -49,13 +59,33 @@ void vars_setting(){
     init_log(&log_fp, log_full_path);
     free(log_full_path);
 }
+char* get_internal_ip() {
+    static char ip[INET_ADDRSTRLEN] = "Unknown";
+    struct ifaddrs *ifaddr, *ifa;
 
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs failed");
+        return ip;
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET &&
+            !(ifa->ifa_flags & IFF_LOOPBACK)) {
+            struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
+            inet_ntop(AF_INET, &(sa->sin_addr), ip, INET_ADDRSTRLEN);
+            break;
+        }
+    }
+    freeifaddrs(ifaddr);
+    return ip;
+}
 int main(){
     struct sockaddr_in server_addr, client_addr;
     int socket_fd, client_fd;
     int len, len_out;
     char buf[BUFFSIZE], cache_result[BUFFSIZE];
     pid_t pid;
+    vars_setting();
 
 
     if ((socket_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0)
@@ -89,6 +119,7 @@ int main(){
         char url[BUFFSIZE] = {0, };
 
         char *tok = NULL;
+        char *internel_ip = get_internal_ip();
 
         len = sizeof(client_addr);
         client_fd = accept(socket_fd, (struct sockaddr*)&client_addr, &len);
@@ -97,8 +128,6 @@ int main(){
             printf("Server : accept failed\n");
             return 0;
         }
-
-        printf("[%s : %d] client was connected\n", inet_ntoa(client_addr.sin_addr), client_addr.sin_port);
         pid = fork();
 
         if (pid == -1) {
@@ -110,14 +139,14 @@ int main(){
         if (pid == 0) {  // 자식 프로세스
             time_t sub_start_time;
             time(&sub_start_time);
-            printf("[%s : %d] client was connected\n", inet_ntoa(inet_client_address), client_addr.sin_port);
+            printf("[%s : %d] client was connected\n", internel_ip, client_addr.sin_port);
             read(client_fd, buf, BUFFSIZE);
             strcpy(tmp, buf);
 
             inet_client_address.s_addr = client_addr.sin_addr.s_addr;
 
             puts("==============================================");
-            printf("Request from [%s : %d]\n", inet_ntoa(inet_client_address), client_addr.sin_port);
+            printf("Request from [%s : %d]\n", internel_ip, client_addr.sin_port);
             puts(buf);
             puts("==============================================");
 
@@ -144,10 +173,10 @@ int main(){
             // 응답 본문
             sprintf(response_message,
                 "<h1>%s</h1><br>"
-                "Hello %s:%d<br><br>"
-                "%s<br><br>"
+                "%s:%d<br>"
+                "%s<br>"
                 "kw2020202047"
-                ,cache_result, inet_ntoa(inet_client_address), client_addr.sin_port, url);
+                ,cache_result, internel_ip, client_addr.sin_port, url);
 
             // HTTP 헤더 작성
             sprintf(response_header,
@@ -160,7 +189,7 @@ int main(){
             // 전송
             write(client_fd, response_header, strlen(response_header));
             write(client_fd, response_message, strlen(response_message));
-            printf("[%s : %d] client was disconnected\n", inet_ntoa(inet_client_address), client_addr.sin_port);
+            printf("[%s : %d] client was disconnected\n", internel_ip, client_addr.sin_port);
            
         }
         close(client_fd);
