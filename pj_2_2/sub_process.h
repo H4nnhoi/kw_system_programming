@@ -1,5 +1,5 @@
-#ifndef PROXY_CACHE_H
-#define PROXY_CACHE_H
+#ifndef SUB_PROCESS_H
+#define SUB_PROCESS_H
 
 #include <sys/types.h>
 #include <stdio.h>

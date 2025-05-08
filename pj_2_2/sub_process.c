@@ -19,7 +19,23 @@
 #define PROCESS_EXIT 7
 #define PROCESS_UNKNOWN -1
 
-
+///////////////////////////////////////////////////////////////////////
+// sub_process                                                       //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - char* input_url : requested URL from the client               //
+//   - pid_t* PID : process ID of the child process                  //
+//   - FILE* log_fp : log file pointer                               //
+//   - const char* cachePath : base path of the cache directory      //
+//   - time_t sub_start_time : time when the process started         //
+//   - int* hit_count : pointer to HIT counter                       //
+//   - int* miss_count : pointer to MISS counter                     //
+// Output:                                                           //
+//   - int : PROCESS_HIT / PROCESS_MISS / PROCESS_EXIT / ERROR CODE  //
+// Purpose:                                                          //
+//   - Hash the URL and check if it's a cache HIT or MISS            //
+//   - Create cache file if MISS, log all activity                   //
+///////////////////////////////////////////////////////////////////////
 int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time, int *hit_count, int *miss_count){
     // setting sub_process
     char hashed_url[41];
@@ -34,15 +50,15 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
         return PROCESS_UNKNOWN;
     }
             
-    // end cmd
-    if (strcmp(input_url, "bye") == 0) {
-        time_t sub_end_time;
-        time(&sub_end_time);
-        char* terminate_log = get_terminated_log(difftime(sub_end_time, sub_start_time), *hit_count, *miss_count);
-        write_log_contents(log_fp, terminate_log);
-        free(terminate_log);
-         return PROCESS_EXIT;        
-    }
+    // // end cmd
+    // if (strcmp(input_url, "bye") == 0) {
+    //     time_t sub_end_time;
+    //     time(&sub_end_time);
+    //     char* terminate_log = get_terminated_log(difftime(sub_end_time, sub_start_time), *hit_count, *miss_count);
+    //     write_log_contents(log_fp, terminate_log);
+    //     free(terminate_log);
+    //      return PROCESS_EXIT;        
+    // }
             
     // get hashed URL using sha1_hash function
     sha1_hash(input_url, hashed_url);

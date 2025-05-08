@@ -35,6 +35,17 @@ int hit_count;
 int miss_count;
 FILE *log_fp;
 
+///////////////////////////////////////////////////////////////////////
+// vars_setting                                                      //
+///////////////////////////////////////////////////////////////////////
+// Input:    None                                                    //
+// Output:   None                                                    //
+// Purpose:                                                          //
+//   - Initializes global variables and time tracking                //
+//   - Prepares cache and log directories                            //
+//   - Checks if logfile exists, creates it if not                   //
+//   - Opens the logfile in append mode using init_log()             //
+///////////////////////////////////////////////////////////////////////
 void vars_setting(){
     // time log init
     time(&start_time);
@@ -59,6 +70,17 @@ void vars_setting(){
     init_log(&log_fp, log_full_path);
     free(log_full_path);
 }
+///////////////////////////////////////////////////////////////////////
+// get_internal_ip                                                   //
+///////////////////////////////////////////////////////////////////////
+// Input:    None                                                    //
+// Output:   char* – internal IPv4 address in dotted-decimal format  //
+// Purpose:                                                          //
+//   - Retrieves the first non-loopback IPv4 address of the system   //
+//   - Iterates through network interfaces using getifaddrs()        //
+//   - Returns "Unknown" if no valid address is found                //
+//   - Used for identifying the proxy server’s internal IP           //
+///////////////////////////////////////////////////////////////////////
 char* get_internal_ip() {
     static char ip[INET_ADDRSTRLEN] = "Unknown";
     struct ifaddrs *ifaddr, *ifa;
@@ -79,6 +101,41 @@ char* get_internal_ip() {
     freeifaddrs(ifaddr);
     return ip;
 }
+///////////////////////////////////////////////////////////////////////
+// handler                                                           //
+///////////////////////////////////////////////////////////////////////
+// Input:    None                                                    //
+// Output:   None                                                    //
+// Purpose:                                                          //
+//   - Handles SIGCHLD signal by reaping zombie child processes      //
+//   - Uses waitpid() with WNOHANG to clean up non-blockingly        //
+///////////////////////////////////////////////////////////////////////
+static void handler() {
+    pid_t pid;
+    int status;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0);
+}
+//////////////////////////////////////////////////////////////////////////
+// File Name : proxy_cache_server.c                                     //
+// Date      : 2025/05/08                                               //
+// OS        : Ubuntu / macOS                                           //
+// Author    : 이정한                                                     //
+// -------------------------------------------------------------------- //
+// Title     : System Programming Assignment #2-2 (Proxy Server)        //
+// Description :                                                        //
+//   This proxy server handles HTTP requests from a web browser.        //
+//   Each request is processed by a child process created with fork().  //
+//   - Extracts the URL from the HTTP request                           //
+//   - Checks for a cached file based on the hashed URL                 //
+//   - If HIT: responds with cached content & write log of hit contents //
+//   - If MISS: connects to target web server, stores and responds      //
+//                                        (+ write log of miss contents)//
+//   - Uses SHA1 hashing for cache filenames                            //
+//   - Tracks HIT/MISS statistics and logs each request                 //
+//   - Handles zombie processes using SIGCHLD signal handler            //
+//   - Displays internal IP and port for each client connection         //
+//////////////////////////////////////////////////////////////////////////
+
 int main(){
     struct sockaddr_in server_addr, client_addr;
     int socket_fd, client_fd;
@@ -106,6 +163,8 @@ int main(){
     }
 
     listen(socket_fd, 5);
+    signal(SIGCHLD, (void *)handler);  // 자식 프로세스 종료 처리
+
 
     while (1)
     {
@@ -123,6 +182,7 @@ int main(){
 
         len = sizeof(client_addr);
         client_fd = accept(socket_fd, (struct sockaddr*)&client_addr, &len);
+        // error 1. not accepted
         if (client_fd < 0)
         {
             printf("Server : accept failed\n");
@@ -130,6 +190,7 @@ int main(){
         }
         pid = fork();
 
+        // error 2. can't execute "fork"
         if (pid == -1) {
             close(client_fd);
             close(socket_fd);
@@ -140,7 +201,13 @@ int main(){
             time_t sub_start_time;
             time(&sub_start_time);
             printf("[%s : %d] client was connected\n", internel_ip, client_addr.sin_port);
-            read(client_fd, buf, BUFFSIZE);
+            ssize_t n = read(client_fd, buf, BUFFSIZE);
+            // error 3. read failed
+            if (n <= 0) {
+                perror("read failed or client closed connection");
+                close(client_fd);
+                exit(1);
+            }
             strcpy(tmp, buf);
 
             inet_client_address.s_addr = client_addr.sin_addr.s_addr;
@@ -157,11 +224,14 @@ int main(){
             {
                 tok = strtok(NULL, " ");
                 strcpy(url, tok);
+            }else{                              // error 4. method type is not "GET"
+                perror("method type wrong");
+                exit(0);
             }
 
             int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count);
             if(result == PROCESS_EXIT) break;
-            else if(result == PROCESS_UNKNOWN){
+            else if(result == PROCESS_UNKNOWN){ // error 5. unknown error in subprocess
                 perror("Error of subprocess");
                 break;
             }else if(result == PROCESS_HIT){
@@ -190,7 +260,7 @@ int main(){
             write(client_fd, response_header, strlen(response_header));
             write(client_fd, response_message, strlen(response_message));
             printf("[%s : %d] client was disconnected\n", internel_ip, client_addr.sin_port);
-           
+            exit(0);
         }
         close(client_fd);
     }

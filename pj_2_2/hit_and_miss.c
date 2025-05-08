@@ -174,3 +174,4 @@ char* get_server_terminated_log(double process_sec, int sub_process_count){
     snprintf(result, needed, server_termiante_format, seconds, sub_process_count);
     return result;
 }
+
