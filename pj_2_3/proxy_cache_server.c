@@ -15,6 +15,7 @@
 #include "fileUtils.h"
 #include "hit_and_miss.h"
 #include "inputUtils.h"
+#include "serverUtils.h"
 
 #define BUFFSIZE 1024
 #define PORTNO 40000
@@ -175,7 +176,7 @@ int main(){
 
         char tmp[BUFFSIZE] = {0, };
         char method[20] = {0, };
-        char url[BUFFSIZE] = {0, };
+        char* url;
 
         char *tok = NULL;
         char *internel_ip = get_internal_ip();
@@ -217,19 +218,10 @@ int main(){
             puts(buf);
             puts("==============================================");
 
-            // HTTP 요청 파싱
-            tok = strtok(tmp, " ");
-            strcpy(method, tok);
-            if (strcmp(method, "GET") == 0)
-            {
-                tok = strtok(NULL, " ");
-                strcpy(url, tok);
-            }else{                              // error 4. method type is not "GET"
-                perror("method type wrong");
-                exit(0);
-            }
+            url = get_parsing_url(tmp);
+            printf("url = %s\n", url);
 
-            int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count);
+            int result = sub_process(internel_ip, client_addr.sin_port, url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count);
             if(result == PROCESS_EXIT) break;
             else if(result == PROCESS_UNKNOWN){ // error 5. unknown error in subprocess
                 perror("Error of subprocess");

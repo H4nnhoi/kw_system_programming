@@ -5,6 +5,6 @@
 #include <stdio.h>
 
 void vars_setting();
-int sub_process(char *inputURL, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time, int *hit_count, int *miss_count);
+int sub_process(char* hostname, int port, char *inputURL, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time, int *hit_count, int *miss_count);
 
 #endif

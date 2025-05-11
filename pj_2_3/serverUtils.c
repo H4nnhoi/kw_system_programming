@@ -25,6 +25,7 @@ char* get_parsing_url(char* request){
         perror("method type wrong");
         exit(0);
     }
+    return url;
 }
 
 int connect_to_webserver(const char *hostname, int port) {
