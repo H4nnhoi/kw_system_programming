@@ -1,5 +1,9 @@
 {
     "files.associations": {
-        "types.h": "c"
+        "types.h": "c",
+        "stdlib.h": "c",
+        "if.h": "c",
+        "ifaddrs.h": "c",
+        "dirutils.h": "c"
     }
 }
