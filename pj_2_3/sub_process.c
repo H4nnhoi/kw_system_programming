@@ -4,6 +4,8 @@
 #include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include "sha1Utils.h"
 #include "dirUtils.h"
 #include "fileUtils.h"
@@ -20,6 +22,20 @@
 #define PROCESS_MISS 0
 #define PROCESS_EXIT 7
 #define PROCESS_UNKNOWN -1
+#define DEFAULT_PORT 80
+
+char cache_full_path[1024];
+
+char *getIPAddr(char *addr)
+{
+    struct hostent* hent;
+    if ((hent = gethostbyname(addr)) != NULL) {
+        return inet_ntoa(*((struct in_addr*)hent->h_addr_list[0]));
+    } else {
+        herror("gethostbyname failed");
+        return NULL;
+    }
+} 
 
 ///////////////////////////////////////////////////////////////////////
 // sub_process                                                       //
@@ -38,83 +54,90 @@
 //   - Hash the URL and check if it's a cache HIT or MISS            //
 //   - Create cache file if MISS, log all activity                   //
 ///////////////////////////////////////////////////////////////////////
-int sub_process(char* hostname, int port, char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time, int *hit_count, int *miss_count){
-    // setting sub_process
-    char hashed_url[41];
-    char subdir[CACHE_DIR_SIZE];
-    char fileName[FILE_SIZE];
-    char* log_contents = NULL;
-    char* subCachePath = NULL;
-    
-
+int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time,
+                int *hit_count, int *miss_count, char* buf, size_t buf_size) {
     if (input_url == NULL) {
         perror("input is null");
         return PROCESS_UNKNOWN;
     }
-            
-    // get hashed URL using sha1_hash function
+
+    char hashed_url[41], subdir[CACHE_DIR_SIZE], fileName[FILE_SIZE];
+    char* log_contents = NULL;
+    char* subCachePath = NULL;
+    char* trimmed_url = input_url + 7;
+
     sha1_hash(input_url, hashed_url);
-
-    // divide hashed_url
-    strncpy(subdir, hashed_url, 3);
-    subdir[3] = '\0';
-
-    // create file by divide hashed_url
-    // * edit file path range [3-40]
-    strncpy(fileName, hashed_url + 3, sizeof(fileName) - 1);
-    fileName[sizeof(fileName) - 1] = '\0'; 
-
+    strncpy(subdir, hashed_url, 3); subdir[3] = '\0';
+    strncpy(fileName, hashed_url + 3, sizeof(fileName) - 1); fileName[sizeof(fileName) - 1] = '\0';
     subCachePath = make_dir_path(cachePath, subdir);
+    snprintf(cache_full_path, sizeof(cache_full_path), "%s/%s", subCachePath, fileName);
 
-    int hit_and_miss_result = is_file_hit(subCachePath, fileName);
+    int result = is_file_hit(subCachePath, fileName);
+    FILE* cache_fp = NULL;
 
-    // HIT & MISS case
-    if(hit_and_miss_result == PROCESS_MISS){      // MISS
-        int server_fd = connect_to_webserver(hostname, port);
-        if (server_fd < 0) {
-            fprintf(stderr, "Cannot connect to web server: %s\n", hostname);
+    if (result == PROCESS_MISS) {
+        // ready to write cache file
+        ensureDirExist(subCachePath, 0777);
+        createFile(subCachePath, fileName);
+        // get host ip address
+        char* hostIpAddr = getIPAddr(trimmed_url);
+        if (!hostIpAddr) {
+            fprintf(stderr, "gethostbyname failed for %s\n", trimmed_url);
             free(subCachePath);
             return PROCESS_UNKNOWN;
         }
+        // try to connect host
+        int server_fd = connect_to_webserver(hostIpAddr, DEFAULT_PORT);
+        if (server_fd < 0) {
+            fprintf(stderr, "Cannot connect to web server: %s\n", hostIpAddr);
+            free(subCachePath);
+            return PROCESS_UNKNOWN;
+        }
+        // set request & send request message to host
         char request_buf[BUFFSIZE];
         snprintf(request_buf, sizeof(request_buf),
             "GET %s HTTP/1.0\r\n"
             "Host: %s\r\n"
             "Connection: close\r\n\r\n",
-            input_url, hostname);
-
-        printf("request : %s\n", request_buf);
+            input_url, hostIpAddr);
 
         if (send_http_request(server_fd, request_buf) < 0) {
             close(server_fd);
             free(subCachePath);
             return PROCESS_UNKNOWN;
         }
-
-        char buffer[BUFFSIZE];
-        receive_http_response(server_fd, buffer, sizeof(buffer));
-
-        printf("response = %s\n", buffer);
+        // write response to buf & cache file
+        init_log(&cache_fp, cache_full_path);
+        receive_http_response(server_fd, buf, buf_size);
+        printf("response = %s\n", buf);
+        write_log_contents(cache_fp, buf);
+        close_log(cache_fp);
+        // write miss log
         log_contents = get_miss_log(input_url);
-        ensureDirExist(subCachePath, 0777);
-        createFile(subCachePath, fileName);
         (*miss_count)++;
-    }else if(hit_and_miss_result == PROCESS_HIT){      // HIT
-        char* hashed_path = make_dir_path(subdir, fileName);
-        log_contents = get_hit_log(hashed_path, input_url);
-        free(hashed_path);
+
+    } else if (result == PROCESS_HIT) {
+        // write response to buf
+        char* full_path = make_dir_path(subCachePath, fileName);
+        init_log(&cache_fp, full_path);
+        read_file_to_buffer(cache_fp, buf, buf_size);
+        close_log(cache_fp);
+        free(full_path);
+        // write hit log
+        log_contents = get_hit_log(cache_full_path, input_url);
         (*hit_count)++;
-    }else{
+
+    } else {
         perror("not range of return\n");
         free(input_url);
         free(subCachePath);
         return PROCESS_UNKNOWN;
     }
-    write_log_contents(log_fp, log_contents);
 
-    //free memory for dynamic allocation
+    write_log_contents(log_fp, log_contents);
     free(subCachePath);
     free(log_contents);
-    
-    return hit_and_miss_result;
+
+    return result;
 }
+

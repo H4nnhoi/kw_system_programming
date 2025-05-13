@@ -18,6 +18,7 @@
 #include "serverUtils.h"
 
 #define BUFFSIZE 1024
+#define RESPONSE_SIZE 2048
 #define PORTNO 40000
 #define PROCESS_HIT 1
 #define PROCESS_MISS 0
@@ -138,6 +139,7 @@ static void handler() {
 //////////////////////////////////////////////////////////////////////////
 
 int main(){
+    
     struct sockaddr_in server_addr, client_addr;
     int socket_fd, client_fd;
     int len, len_out;
@@ -148,7 +150,7 @@ int main(){
 
     if ((socket_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0)
     {
-        printf("Server : Can't open stream socket\n");
+        perror("Server : Can't open stream socket\n");
         return 0;
     }
 
@@ -159,7 +161,7 @@ int main(){
 
     if (bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        printf("Server : Can't bind local address\n");
+        perror("Server : Can't bind local address\n");
         return 0;
     }
 
@@ -172,7 +174,7 @@ int main(){
         struct in_addr inet_client_address;
 
         char response_header[BUFFSIZE] = {0, };
-        char response_message[BUFFSIZE] = {0, };
+        char response_message[RESPONSE_SIZE];
 
         char tmp[BUFFSIZE] = {0, };
         char method[20] = {0, };
@@ -219,9 +221,11 @@ int main(){
             puts("==============================================");
 
             url = get_parsing_url(tmp);
-            printf("url = %s\n", url);
+            if(strlen(url) > 0){
+                url[strlen(url) - 1] = '\0';        // remove slash
+            }
 
-            int result = sub_process(internel_ip, client_addr.sin_port, url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count);
+            int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count, response_message, sizeof(response_message));
             if(result == PROCESS_EXIT) break;
             else if(result == PROCESS_UNKNOWN){ // error 5. unknown error in subprocess
                 perror("Error of subprocess");
@@ -232,24 +236,7 @@ int main(){
                 sprintf(cache_result, "MISS");
             } 
 
-            // 응답 본문
-            sprintf(response_message,
-                "<h1>%s</h1><br>"
-                "%s:%d<br>"
-                "%s<br>"
-                "kw2020202047"
-                ,cache_result, internel_ip, client_addr.sin_port, url);
-
-            // HTTP 헤더 작성
-            sprintf(response_header,
-                "HTTP/1.0 200 OK\r\n"
-                "Server:2018 simple web server\r\n"
-                "Content-length:%lu\r\n"
-                "Content-type:text/html\r\n\r\n",
-                strlen(response_message));
-
             // 전송
-            write(client_fd, response_header, strlen(response_header));
             write(client_fd, response_message, strlen(response_message));
             printf("[%s : %d] client was disconnected\n", internel_ip, client_addr.sin_port);
             exit(0);

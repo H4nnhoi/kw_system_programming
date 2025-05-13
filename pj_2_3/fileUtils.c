@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 #include "fileUtils.h"
 
 #define MAX_FULL_PATH_SIZE 512
@@ -79,4 +80,30 @@ void write_log_contents(FILE *log_fp, const char *contents){
         fflush(log_fp);         //immediately write
     }
 
+}
+
+int read_file_to_buffer(FILE *fp, char *buffer, size_t bufsize) {
+    if (fp == NULL) {
+        fprintf(stderr, "[ERROR] File pointer is NULL. File must be opened before calling this function.\n");
+        exit(EXIT_FAILURE);  // 강제 종료
+    }
+
+    if (buffer == NULL || bufsize == 0) {
+        fprintf(stderr, "[ERROR] Invalid buffer or size.\n");
+        return -1;
+    }
+
+    if (fseek(fp, 0, SEEK_SET) != 0) {
+        perror("fseek failed");
+        return -1;
+    }
+
+    size_t total_read = fread(buffer, 1, bufsize - 1, fp);
+    if (ferror(fp)) {
+        perror("fread failed");
+        return -1;
+    }
+
+    buffer[total_read] = '\0';  // 텍스트용 null 종료
+    return 0;
 }

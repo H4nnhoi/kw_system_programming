@@ -4,6 +4,7 @@
         "stdlib.h": "c",
         "if.h": "c",
         "ifaddrs.h": "c",
-        "dirutils.h": "c"
+        "dirutils.h": "c",
+        "fileutils.h": "c"
     }
 }

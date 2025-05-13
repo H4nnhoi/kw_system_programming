@@ -8,7 +8,7 @@
 #include <sys/socket.h>   
 #define BUFFSIZE 1024
 
-char* get_parsing_url(char* request){
+char* get_parsing_url(const char* request){
     char tmp[BUFFSIZE] = {0, };
     char url[BUFFSIZE] = {0, };
     char method[20] = {0, };
@@ -73,8 +73,9 @@ int send_http_request(int sockfd, const char* request) {
 int receive_http_response(int sockfd, char* buffer, size_t size) {
     ssize_t total_received = 0;
     ssize_t n;
-
+    
     while ((n = read(sockfd, buffer + total_received, size - total_received)) > 0) {
+        printf("length = %zd\n", n);
         total_received += n;
         if (total_received >= size) {
             break;  // 버퍼 한계 도달
@@ -85,6 +86,6 @@ int receive_http_response(int sockfd, char* buffer, size_t size) {
         perror("read from web server failed");
         return -1;
     }
-
+    buffer[total_received] = '\0';
     return total_received;
 }
