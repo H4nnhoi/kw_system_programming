@@ -217,7 +217,7 @@ int main(){
 
             puts("==============================================");
             printf("Request from [%s : %d]\n", internel_ip, client_addr.sin_port);
-            puts(buf);
+            // puts(buf);
             puts("==============================================");
 
             url = get_parsing_url(tmp);

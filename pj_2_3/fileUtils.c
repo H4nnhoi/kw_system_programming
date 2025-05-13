@@ -48,7 +48,7 @@ void createFile(const char *dirPath, const char *fileName) {
 // Purpose: Open the log file in append mode and assign to log_fp.   //
 ///////////////////////////////////////////////////////////////////////
 void init_log(FILE **log_fp, const char* fullPath){
-    *log_fp = fopen(fullPath, "a");
+    *log_fp = fopen(fullPath, "r+");
     if(*log_fp == NULL){
         perror("fopen failed");
         return;

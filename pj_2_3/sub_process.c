@@ -37,6 +37,11 @@ char *getIPAddr(char *addr)
     }
 } 
 
+void timeout_handler(int signum) {
+    fprintf(stderr, "==========NO RESPONSE==========\n");
+    exit(PROCESS_EXIT);  // 자식 프로세스 종료
+}
+
 ///////////////////////////////////////////////////////////////////////
 // sub_process                                                       //
 ///////////////////////////////////////////////////////////////////////
@@ -71,9 +76,12 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
     strncpy(fileName, hashed_url + 3, sizeof(fileName) - 1); fileName[sizeof(fileName) - 1] = '\0';
     subCachePath = make_dir_path(cachePath, subdir);
     snprintf(cache_full_path, sizeof(cache_full_path), "%s/%s", subCachePath, fileName);
+    char* full_path = make_dir_path(subCachePath, fileName);
 
     int result = is_file_hit(subCachePath, fileName);
     FILE* cache_fp = NULL;
+
+    signal(SIGALRM, timeout_handler);
 
     if (result == PROCESS_MISS) {
         // ready to write cache file
@@ -100,7 +108,8 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
             "Host: %s\r\n"
             "Connection: close\r\n\r\n",
             input_url, hostIpAddr);
-
+        //START ALARM COUNT
+        alarm(10);
         if (send_http_request(server_fd, request_buf) < 0) {
             close(server_fd);
             free(subCachePath);
@@ -109,6 +118,7 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
         // write response to buf & cache file
         init_log(&cache_fp, cache_full_path);
         receive_http_response(server_fd, buf, buf_size);
+        alarm(0);
         printf("response = %s\n", buf);
         write_log_contents(cache_fp, buf);
         close_log(cache_fp);
@@ -118,13 +128,17 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
 
     } else if (result == PROCESS_HIT) {
         // write response to buf
-        char* full_path = make_dir_path(subCachePath, fileName);
-        init_log(&cache_fp, full_path);
+        init_log(&cache_fp, cache_full_path);
+        if (!cache_fp) {
+            perror("fopen failed");
+            free(subCachePath);
+            return PROCESS_UNKNOWN;
+        }
         read_file_to_buffer(cache_fp, buf, buf_size);
         close_log(cache_fp);
-        free(full_path);
+        
         // write hit log
-        log_contents = get_hit_log(cache_full_path, input_url);
+        log_contents = get_hit_log(full_path, input_url);
         (*hit_count)++;
 
     } else {
@@ -137,6 +151,7 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
     write_log_contents(log_fp, log_contents);
     free(subCachePath);
     free(log_contents);
+    free(full_path);
 
     return result;
 }
