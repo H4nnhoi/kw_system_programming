@@ -123,7 +123,6 @@ int receive_http_response(int sockfd, char* buffer, size_t size) {
     ssize_t n;
 
     while ((n = read(sockfd, buffer + total_received, size - total_received)) > 0) {
-        printf("length = %zd\n", n);
         total_received += n;
         if (total_received >= size) {
             break;  // 버퍼 한계 도달

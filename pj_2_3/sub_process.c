@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <signal.h>
 #include "sha1Utils.h"
 #include "dirUtils.h"
 #include "fileUtils.h"
@@ -158,7 +159,6 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
         init_log(&cache_fp, cache_full_path);
         receive_http_response(server_fd, buf, buf_size);
         alarm(0);
-        printf("response = %s\n", buf);
         write_log_contents(cache_fp, buf);
         close_log(cache_fp);
         // write miss log

@@ -146,7 +146,7 @@ int main(){
     struct sockaddr_in server_addr, client_addr;
     int socket_fd, client_fd;
     int len, len_out;
-    char buf[BUFFSIZE], cache_result[BUFFSIZE];
+    char buf[BUFFSIZE];
     pid_t pid;
     vars_setting();
 
@@ -191,7 +191,7 @@ int main(){
         // error 1. not accepted
         if (client_fd < 0)
         {
-            printf("Server : accept failed\n");
+            perror("Server : accept failed\n");
             return 0;
         }
         pid = fork();
@@ -219,29 +219,17 @@ int main(){
             inet_client_address.s_addr = client_addr.sin_addr.s_addr;
 
             puts("==============================================");
-            printf("Request from [%s : %d]\n", internel_ip, client_addr.sin_port);
-            // puts(buf);
-            puts("==============================================");
-
             url = get_parsing_url(tmp);
             if(strlen(url) > 0){
                 url[strlen(url) - 1] = '\0';        // remove slash
             }
 
             int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count, response_message, sizeof(response_message));
-            if(result == PROCESS_EXIT) break;
-            else if(result == PROCESS_UNKNOWN){ // error 5. unknown error in subprocess
-                perror("Error of subprocess");
-                break;
-            }else if(result == PROCESS_HIT){
-                sprintf(cache_result, "HIT");
-            }else if(result == PROCESS_MISS){
-                sprintf(cache_result, "MISS");
-            } 
 
             // 전송
             write(client_fd, response_message, strlen(response_message));
             printf("[%s : %d] client was disconnected\n", internel_ip, client_addr.sin_port);
+            puts("==============================================");
             exit(0);
         }
         close(client_fd);
