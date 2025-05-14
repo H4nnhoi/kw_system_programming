@@ -19,7 +19,7 @@
 
 #define BUFFSIZE 1024
 #define RESPONSE_SIZE 2048
-#define PORTNO 40000
+#define PORTNO 39999
 #define PROCESS_HIT 1
 #define PROCESS_MISS 0
 #define PROCESS_EXIT 7
@@ -119,23 +119,26 @@ static void handler() {
 }
 //////////////////////////////////////////////////////////////////////////
 // File Name : proxy_cache_server.c                                     //
-// Date      : 2025/05/08                                               //
+// Date      : 2025/05/14                                               //
 // OS        : Ubuntu / macOS                                           //
 // Author    : 이정한                                                     //
 // -------------------------------------------------------------------- //
-// Title     : System Programming Assignment #2-2 (Proxy Server)        //
+// Title     : System Programming Assignment #2-3 (Proxy Server)        //
 // Description :                                                        //
-//   This proxy server handles HTTP requests from a web browser.        //
-//   Each request is processed by a child process created with fork().  //
-//   - Extracts the URL from the HTTP request                           //
-//   - Checks for a cached file based on the hashed URL                 //
-//   - If HIT: responds with cached content & write log of hit contents //
-//   - If MISS: connects to target web server, stores and responds      //
-//                                        (+ write log of miss contents)//
-//   - Uses SHA1 hashing for cache filenames                            //
-//   - Tracks HIT/MISS statistics and logs each request                 //
-//   - Handles zombie processes using SIGCHLD signal handler            //
-//   - Displays internal IP and port for each client connection         //
+//   This proxy server handles HTTP GET requests from web browsers.     //
+//   Each connection is handled by a forked child process.              //
+//                                                                      //
+//   [Core Functionalities]                                             //
+//   - Accepts client connections and reads HTTP requests               //
+//   - Parses and extracts the URL from the request                     //
+//   - Uses SHA1 to hash the URL into a unique cache filename           //
+//   - Checks for cache HIT or MISS based on the hashed filename        //
+//     • HIT  : Reads cached file and responds immediately              //
+//     • MISS : Connects to web server, fetches response, caches it     //
+//   - Logs each request with HIT/MISS result and timestamp             //
+//   - Prevents zombie processes using SIGCHLD handler                  //
+//   - Displays server internal IP and client port for debugging        //
+//   - Handles slow responses using a timeout signal (alarm)            //
 //////////////////////////////////////////////////////////////////////////
 
 int main(){

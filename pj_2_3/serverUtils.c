@@ -8,6 +8,19 @@
 #include <sys/socket.h>   
 #define BUFFSIZE 1024
 
+
+///////////////////////////////////////////////////////////////////////
+// get_parsing_url                                                   //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - const char* request : Raw HTTP request string                 //
+// Return:                                                           //
+//   - char* : Extracted URL from only GET request                   //
+// Description:                                                      //
+//   - Parses the HTTP request and extracts the requested URL        //
+//   - Only supports the GET method                                  //
+//   - If the method is not GET, the process exits                   //
+///////////////////////////////////////////////////////////////////////
 char* get_parsing_url(const char* request){
     char tmp[BUFFSIZE] = {0, };
     char url[BUFFSIZE] = {0, };
@@ -27,7 +40,18 @@ char* get_parsing_url(const char* request){
     }
     return url;
 }
-
+///////////////////////////////////////////////////////////////////////
+// connect_to_webserver                                              //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - const char* hostname : Domain name of the target server       //
+//   - int port             : Port number (e.g., 80 for HTTP)        //
+// Return:                                                           //
+//   - int : Connected socket descriptor on success, -1 on failure   //
+// Description:                                                      //
+//   - Resolves the hostname to an IP address                        //
+//   - Creates a TCP socket and connects to the target web server    //
+///////////////////////////////////////////////////////////////////////
 int connect_to_webserver(const char *hostname, int port) {
     struct sockaddr_in server_addr;
     struct hostent *host;
@@ -53,7 +77,18 @@ int connect_to_webserver(const char *hostname, int port) {
 
     return sock;
 }
-
+///////////////////////////////////////////////////////////////////////
+// send_http_request                                                 //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - int sockfd         : Socket file descriptor                   //
+//   - const char* request : HTTP request string to send             //
+// Return:                                                           //
+//   - int : 0 on success, -1 on failure                             //
+// Description:                                                      //
+//   - Sends the full HTTP request to the connected web server       //
+//   - Handles partial sends by looping until all data is sent       //
+///////////////////////////////////////////////////////////////////////
 int send_http_request(int sockfd, const char* request) {
     size_t total_sent = 0;
     size_t request_len = strlen(request);
@@ -69,11 +104,24 @@ int send_http_request(int sockfd, const char* request) {
     return 0;
 }
 
-
+///////////////////////////////////////////////////////////////////////
+// receive_http_response                                             //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - int sockfd       : Socket file descriptor                     //
+//   - char* buffer     : Buffer to store the response               //
+//   - size_t size      : Size of the buffer                         //
+// Return:                                                           //
+//   - int : Number of bytes received on success, -1 on failure      //
+// Description:                                                      //
+//   - Reads the response from the web server                        //
+//   - Continues reading until the buffer is full or connection ends //
+//   - Appends null terminator at the end of the buffer              //
+///////////////////////////////////////////////////////////////////////
 int receive_http_response(int sockfd, char* buffer, size_t size) {
     ssize_t total_received = 0;
     ssize_t n;
-    
+
     while ((n = read(sockfd, buffer + total_received, size - total_received)) > 0) {
         printf("length = %zd\n", n);
         total_received += n;

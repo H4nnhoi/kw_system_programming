@@ -26,6 +26,22 @@
 
 char cache_full_path[1024];
 
+///////////////////////////////////////////////////////////////////////
+// getIPAddr                                                         //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - char* addr : Hostname (e.g., "www.example.com")               //
+// Return:                                                           //
+//   - char*      : String representation of the IPv4 address        //
+//                  (e.g., "93.184.216.34")                          //
+//                  Returns NULL on failure                          //
+// Description:                                                      //
+//   - Resolves a hostname to its corresponding IPv4 address using   //
+//     DNS via gethostbyname().                                      //
+//   - Converts the resolved address to a human-readable string      //
+//     using inet_ntoa().                                            //
+//   - On failure, prints DNS resolution error via herror().         //
+///////////////////////////////////////////////////////////////////////
 char *getIPAddr(char *addr)
 {
     struct hostent* hent;
@@ -36,29 +52,52 @@ char *getIPAddr(char *addr)
         return NULL;
     }
 } 
-
+///////////////////////////////////////////////////////////////////////
+// timeout_handler                                                   //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - int signum : Signal number (e.g., SIGALRM)                    //
+// Description:                                                      //
+//   - This function is triggered when a timeout signal (SIGALRM)    //
+//     is received.                                                  //
+//   - It prints a timeout message to stderr and exits the child     //
+//     process with PROCESS_EXIT code.                               //
+///////////////////////////////////////////////////////////////////////
 void timeout_handler(int signum) {
     fprintf(stderr, "==========NO RESPONSE==========\n");
     exit(PROCESS_EXIT);  // 자식 프로세스 종료
 }
 
-///////////////////////////////////////////////////////////////////////
-// sub_process                                                       //
-///////////////////////////////////////////////////////////////////////
-// Input:                                                            //
-//   - char* input_url : requested URL from the client               //
-//   - pid_t* PID : process ID of the child process                  //
-//   - FILE* log_fp : log file pointer                               //
-//   - const char* cachePath : base path of the cache directory      //
-//   - time_t sub_start_time : time when the process started         //
-//   - int* hit_count : pointer to HIT counter                       //
-//   - int* miss_count : pointer to MISS counter                     //
-// Output:                                                           //
-//   - int : PROCESS_HIT / PROCESS_MISS / PROCESS_EXIT / ERROR CODE  //
-// Purpose:                                                          //
-//   - Hash the URL and check if it's a cache HIT or MISS            //
-//   - Create cache file if MISS, log all activity                   //
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+// sub_process                                                          //
+//////////////////////////////////////////////////////////////////////////
+// Input:                                                               //
+//   - char* input_url       : The full URL requested by the client     //
+//   - pid_t* PID            : Pointer to the current child process ID  //
+//   - FILE* log_fp          : File pointer for the server log          //
+//   - const char* cachePath : Root directory path for cached files     //
+//   - time_t sub_start_time : Timestamp when the child process started //
+//   - int* hit_count        : Pointer to HIT counter                   //
+//   - int* miss_count       : Pointer to MISS counter                  //
+//   - char* buf             : Buffer to store the HTTP response        //
+//   - size_t buf_size       : Maximum size of the response buffer      //
+// Return:                                                              //
+//   - PROCESS_HIT           : Returned if cache HIT                    //
+//   - PROCESS_MISS          : Returned if cache MISS                   //
+//   - PROCESS_EXIT          : Returned on timeout or forced exit       //
+//   - PROCESS_UNKNOWN       : Returned on other internal errors        //
+// Description:                                                         //
+//   - Hashes the URL using SHA1 to generate a unique cache filename    //
+//   - Checks whether the file exists in the cache directory            //
+//   - On HIT: reads the cached file and stores its content in buffer   //
+//   - On MISS:                                                         //
+//       • Resolves IP address of the target host                       //
+//       • Connects to the web server via socket                        //
+//       • Sends an HTTP GET request and waits for response (10s)       //
+//       • Caches the received response to a file                       //
+//   - Logs each request with timestamp, URL, and HIT/MISS status       //
+//   - Frees any dynamically allocated resources                        //
+//////////////////////////////////////////////////////////////////////////
 int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time,
                 int *hit_count, int *miss_count, char* buf, size_t buf_size) {
     if (input_url == NULL) {
