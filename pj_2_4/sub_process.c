@@ -156,8 +156,8 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
         }
 	
         // write response to buf & cache file
-	ensureDirExist(subCachePath,0777);
-	createFile(subCachePath, fileName);
+	    ensureDirExist(subCachePath,0777);
+	    createFile(subCachePath, fileName);
         init_log(&cache_fp, cache_full_path);
         receive_http_response(server_fd, buf, buf_size);
         alarm(0);

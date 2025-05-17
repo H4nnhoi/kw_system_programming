@@ -36,6 +36,7 @@ time_t end_time;
 time_t sub_start_time;
 int hit_count;
 int miss_count;
+int process_count;
 FILE *log_fp;
 
 ///////////////////////////////////////////////////////////////////////
@@ -118,11 +119,19 @@ static void handler() {
     int status;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0);
 }
+
+static void interrupt_handler(){
+    char* terminate_log = NULL;
+    time(&end_time);
+    terminate_log = get_server_terminated_log(difftime(end_time, start_time), process_count);
+    write_log_contents(log_fp, terminate_log);
+    close_log(terminate_log);
+}
 //////////////////////////////////////////////////////////////////////////
 // File Name : proxy_cache_server.c                                     //
 // Date      : 2025/05/14                                               //
-// OS        : Ubuntu		                                        //
-// Author    : 이정한                                                   //
+// OS        : Ubuntu		                                            //
+// Author    : 이정한                                                     //
 // -------------------------------------------------------------------- //
 // Title     : System Programming Assignment #2-3 (Proxy Server)        //
 // Description :                                                        //
@@ -171,7 +180,7 @@ int main(){
 
     listen(socket_fd, 5);
     signal(SIGCHLD, (void *)handler);  // 자식 프로세스 종료 처리
-    printf("ready\n");
+    signal(SIGINT, (void *) interrupt_handler);     // when interrupted process by cntrl + c
 
     while (1)
     {
@@ -189,12 +198,37 @@ int main(){
 
         len = sizeof(client_addr);
         client_fd = accept(socket_fd, (struct sockaddr*)&client_addr, &len);
-        // error 1. not accepted
         if (client_fd < 0)
         {
             perror("Server : accept failed\n");
             return 0;
         }
+
+        printf("[%s : %d] client was connected\n", internel_ip, client_addr.sin_port);
+        ssize_t n = read(client_fd, buf, BUFFSIZE);
+        // error 3. read failed
+        if (n <= 0) {
+            perror("read failed or client closed connection");
+            close(client_fd);
+            continue;
+        }
+        strcpy(tmp, buf);
+        inet_client_address.s_addr = client_addr.sin_addr.s_addr;
+        puts("====================================");
+        printf("Request from [%s : %d]\n", internel_ip, client_addr.sin_port);
+        puts(buf);
+        puts("====================================");
+        url = get_parsing_url(tmp);
+        size_t len = strlen(url);
+        if(len > 0 && url[len - 1] == '/'){
+            url[strlen(url) - 1] = '\0';        // remove slash
+        }
+        if (strstr(url, "favicon.ico") || strstr(url, "firewall") || strstr(url, "socket") || 
+            strstr(url, "manifest") || strstr(url, "fonts.googleapis.com")) {
+            close(client_fd);
+            continue;
+        }
+        
         pid = fork();
 
         // error 2. can't execute "fork"
@@ -207,26 +241,6 @@ int main(){
         if (pid == 0) {  // 자식 프로세스
             time_t sub_start_time;
             time(&sub_start_time);
-	    printf("[%s : %d] client was connected\n", internel_ip, client_addr.sin_port);
-            ssize_t n = read(client_fd, buf, BUFFSIZE);
-            // error 3. read failed
-            if (n <= 0) {
-                perror("read failed or client closed connection");
-                close(client_fd);
-                exit(1);
-            }
-            strcpy(tmp, buf);
-            inet_client_address.s_addr = client_addr.sin_addr.s_addr;
-	    puts("====================================");
-	    printf("Request from [%s : %d]\n", internel_ip, client_addr.sin_port);
-	    puts(buf);
-	    puts("====================================");
-            url = get_parsing_url(tmp);
-            size_t len = strlen(url);
-	    if(len > 0 && url[len - 1] == '/'){
-                url[strlen(url) - 1] = '\0';        // remove slash
-            }
-	    
 
             int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count, response_message, sizeof(response_message));
 
@@ -236,6 +250,7 @@ int main(){
             exit(0);
         }
         close(client_fd);
+        process_count++;
     }
 
     close(socket_fd);
