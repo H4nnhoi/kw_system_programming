@@ -15,11 +15,9 @@
 // Input:                                                            //
 //   - const char* request : Raw HTTP request string                 //
 // Return:                                                           //
-//   - char* : Extracted URL from only GET request                   //
+//   - char* : Extracted URL from  request                           //
 // Description:                                                      //
 //   - Parses the HTTP request and extracts the requested URL        //
-//   - Only supports the GET method                                  //
-//   - If the method is not GET, the process exits                   //
 ///////////////////////////////////////////////////////////////////////
 char* get_parsing_url(const char* request){
     char tmp[BUFFSIZE] = {0, };
@@ -31,14 +29,11 @@ char* get_parsing_url(const char* request){
     // HTTP 요청 파싱
     tok = strtok(tmp, " ");
     strcpy(method, tok);
-    if (strcmp(method, "GET") == 0){
-        tok = strtok(NULL, " ");
-        strcpy(url, tok);
-    }else{
-        perror("method type wrong");
-        exit(0);
-    }
-    return url;
+    tok = strtok(NULL, " ");
+    strcpy(url, tok);
+    
+    
+    return strdup(url);
 }
 ///////////////////////////////////////////////////////////////////////
 // connect_to_webserver                                              //

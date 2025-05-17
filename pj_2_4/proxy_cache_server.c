@@ -8,7 +8,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include <ifaddrs.h>
-#include <net/if.h> 
+#include <net/if.h>
+#include <signal.h>
 
 #include "sub_process.h"
 #include "dirUtils.h"
@@ -120,8 +121,8 @@ static void handler() {
 //////////////////////////////////////////////////////////////////////////
 // File Name : proxy_cache_server.c                                     //
 // Date      : 2025/05/14                                               //
-// OS        : Ubuntu / macOS                                           //
-// Author    : 이정한                                                     //
+// OS        : Ubuntu		                                        //
+// Author    : 이정한                                                   //
 // -------------------------------------------------------------------- //
 // Title     : System Programming Assignment #2-3 (Proxy Server)        //
 // Description :                                                        //
@@ -170,7 +171,7 @@ int main(){
 
     listen(socket_fd, 5);
     signal(SIGCHLD, (void *)handler);  // 자식 프로세스 종료 처리
-
+    printf("ready\n");
 
     while (1)
     {
@@ -206,7 +207,7 @@ int main(){
         if (pid == 0) {  // 자식 프로세스
             time_t sub_start_time;
             time(&sub_start_time);
-            printf("[%s : %d] client was connected\n", internel_ip, client_addr.sin_port);
+	    printf("[%s : %d] client was connected\n", internel_ip, client_addr.sin_port);
             ssize_t n = read(client_fd, buf, BUFFSIZE);
             // error 3. read failed
             if (n <= 0) {
@@ -215,21 +216,23 @@ int main(){
                 exit(1);
             }
             strcpy(tmp, buf);
-
             inet_client_address.s_addr = client_addr.sin_addr.s_addr;
-
-            puts("==============================================");
+	    puts("====================================");
+	    printf("Request from [%s : %d]\n", internel_ip, client_addr.sin_port);
+	    puts(buf);
+	    puts("====================================");
             url = get_parsing_url(tmp);
-            if(strlen(url) > 0){
+            size_t len = strlen(url);
+	    if(len > 0 && url[len - 1] == '/'){
                 url[strlen(url) - 1] = '\0';        // remove slash
             }
+	    
 
             int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count, response_message, sizeof(response_message));
 
             // 전송
             write(client_fd, response_message, strlen(response_message));
             printf("[%s : %d] client was disconnected\n", internel_ip, client_addr.sin_port);
-            puts("==============================================");
             exit(0);
         }
         close(client_fd);

@@ -124,9 +124,7 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
     signal(SIGALRM, timeout_handler);
 
     if (result == PROCESS_MISS) {
-        // ready to write cache file
-        ensureDirExist(subCachePath, 0777);
-        createFile(subCachePath, fileName);
+        
         // get host ip address
         char* hostIpAddr = getIPAddr(trimmed_url);
         if (!hostIpAddr) {
@@ -150,12 +148,16 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
             input_url, hostIpAddr);
         //START ALARM COUNT
         alarm(10);
+	//sleep(5);
         if (send_http_request(server_fd, request_buf) < 0) {
             close(server_fd);
             free(subCachePath);
             return PROCESS_UNKNOWN;
         }
+	
         // write response to buf & cache file
+	ensureDirExist(subCachePath,0777);
+	createFile(subCachePath, fileName);
         init_log(&cache_fp, cache_full_path);
         receive_http_response(server_fd, buf, buf_size);
         alarm(0);
