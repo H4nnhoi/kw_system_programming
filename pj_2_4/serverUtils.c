@@ -37,6 +37,20 @@ char* get_parsing_url(const char* request){
     return strdup(url);
 }
 
+///////////////////////////////////////////////////////////////////////
+// get_parsing_host_and_path                                         //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - const char* url : The full URL string (e.g., "http://...")    //
+//   - char* host      : Output buffer to store the parsed hostname  //
+//   - char* path      : Output buffer to store the parsed path      //
+// Output:                                                           //
+//   - None (results are written into host and path arguments)       //
+// Purpose:                                                          //
+//   - Parses a full URL into its hostname and path components       //
+//   - Removes the "http://" prefix and separates host and path      //
+//   - If no path is provided, defaults to "/"                       //
+///////////////////////////////////////////////////////////////////////
 void get_parsing_host_and_path(const char* url, char *host, char *path){
 	char temp[BUFFSIZE];
 	strcpy(temp, url);
@@ -126,20 +140,20 @@ int send_http_request(int sockfd, const char* request) {
     return 0;
 }
 
-///////////////////////////////////////////////////////////////////////
-// receive_http_response                                             //
-///////////////////////////////////////////////////////////////////////
-// Input:                                                            //
-//   - int sockfd       : Socket file descriptor                     //
-//   - char* buffer     : Buffer to store the response               //
-//   - size_t size      : Size of the buffer                         //
-// Return:                                                           //
-//   - int : Number of bytes received on success, -1 on failure      //
-// Description:                                                      //
-//   - Reads the response from the web server                        //
-//   - Continues reading until the buffer is full or connection ends //
-//   - Appends null terminator at the end of the buffer              //
-///////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+// receive_http_response                                              //
+////////////////////////////////////////////////////////////////////////
+// Input:                                                             //
+//   - int sockfd         : Socket file descriptor connected to host  //
+//   - size_t* out_size   : Pointer to store the size of received data//
+// Output:                                                            //
+//   - char*              : Pointer to dynamically allocated buffer   //
+//                          Returns NULL on failure                   //
+// Purpose:                                                           //
+//   - Receives a complete HTTP response from the given socket        //
+//   - Dynamically expands buffer as data is received                 //
+//   - Ensures memory safety and null-terminates the final buffer     //
+////////////////////////////////////////////////////////////////////////
 char* receive_http_response(int sockfd, size_t *out_size) {
     char *buffer = NULL;
     size_t buffer_size = 0;
@@ -147,22 +161,22 @@ char* receive_http_response(int sockfd, size_t *out_size) {
     
 
     while (1) {
-	buffer = realloc(buffer, buffer_size + READ_BLOCK_SIZE);
-	if(buffer == NULL){
-		perror("realloc failed");
-		return NULL;
-	}
+        //if want to expand size, re-allocate
+        buffer = realloc(buffer, buffer_size + READ_BLOCK_SIZE);
+        if(buffer == NULL){
+            perror("realloc failed");
+            return NULL;
+        }
 
-	size_t n = read(sockfd, buffer + total_received, READ_BLOCK_SIZE);
-	if(n < 0){
-		perror("read failed");
-		free(buffer);
-		return NULL;
-	}
-	else if(n == 0){
-		break;
-	}
-
+        size_t n = read(sockfd, buffer + total_received, READ_BLOCK_SIZE);
+        if(n < 0){
+            perror("read failed");
+            free(buffer);
+            return NULL;
+        }
+        else if(n == 0){
+            break;
+        }
         total_received += n;
         buffer_size += READ_BLOCK_SIZE;
     }

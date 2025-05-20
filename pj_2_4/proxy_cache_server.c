@@ -31,11 +31,13 @@ char home[BUFFSIZE];
 char cachePath[BUFFSIZE];
 char logPath[BUFFSIZE];
 const char logfileName[LOGFILE_NAME_SIZE] = "logfile.txt";
+const char *filter_keywords[] = {
+    "favicon.ico", "firewall", "socket", "manifest",
+    "goog", "ocsp", "r11", "r10", "css", "firefox"
+};
+const int filter_keyword_count = sizeof(filter_keywords) / sizeof(filter_keywords[0]);
 time_t start_time;
 time_t end_time;
-time_t sub_start_time;
-int hit_count;
-int miss_count;
 int process_count;
 FILE *log_fp;
 
@@ -53,9 +55,7 @@ FILE *log_fp;
 void vars_setting(){
     // time log init
     time(&start_time);
-    // count init
-    hit_count = 0;
-    miss_count = 0;
+    
     // value setting(empty input, home path, cache path)
     getHomeDir(home);
     snprintf(cachePath, BUFFSIZE, "%s/cache", home);
@@ -121,7 +121,18 @@ static void handler() {
 	    process_count++;
     }
 }
-
+///////////////////////////////////////////////////////////////////////
+// interrupt_handler                                                 //
+///////////////////////////////////////////////////////////////////////
+// Input:    None                                                    //
+// Output:   None                                                    //
+// Purpose:                                                          //
+//   - Handles SIGINT (Ctrl+C) signal to terminate server            //
+//   - Calculates server uptime using start and end timestamps       //
+//   - Generates a termination log summarizing session info          //
+//   - Writes the termination log to the server log file             //
+//   - Closes the log file before exiting the program                //
+///////////////////////////////////////////////////////////////////////
 static void interrupt_handler(){
     char* terminate_log = NULL;
     time(&end_time);
@@ -129,30 +140,59 @@ static void interrupt_handler(){
     write_log_contents(log_fp, terminate_log);
     close_log(terminate_log);
 }
+
+///////////////////////////////////////////////////////////////////////
+// is_filtered_url                                                   //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - const char* url : The URL string from the HTTP request        //
+// Return:                                                           //
+//   - int            : Returns 1 if the URL should be filtered      //
+//                      (i.e., ignored and not processed)            //
+//                      Returns 0 if the URL is valid to process     //
+// Purpose:                                                          //
+//   - Determines whether the incoming URL contains unwanted         //
+//     resource patterns (e.g., favicon, analytics, scripts)         //
+//   - Helps reduce unnecessary resource handling in the proxy       //
+//   - Common targets include background assets and tracking links   //
+// Implementation:                                                   //
+//   - Uses strstr() to search for known keyword patterns            //
+//   - Keywords are stored in a static array for easy maintenance    //
+///////////////////////////////////////////////////////////////////////
+int is_filtered_url(const char *url) {
+    for (int i = 0; i < filter_keyword_count; i++) {
+        if (strstr(url, filter_keywords[i]) != NULL) {
+            return 1; // 필터링 대상
+        }
+    }
+    return 0;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // File Name : proxy_cache_server.c                                     //
-// Date      : 2025/05/14                                               //
-// OS        : Ubuntu		                                            //
+// Date      : 2025/05/20                                               //
+// OS        : Ubuntu                                                   //
 // Author    : 이정한                                                     //
-// -------------------------------------------------------------------- //
+//////////////////////////////////////////////////////////////////////////
 // Title     : System Programming Assignment #2-3 (Proxy Server)        //
 // Description :                                                        //
 //   This proxy server handles HTTP GET requests from web browsers.     //
-//   Each connection is handled by a forked child process.              //
+//   Each client connection is handled by a forked child process.       //
 //                                                                      //
 //   [Core Functionalities]                                             //
-//   - Accepts client connections and reads HTTP requests               //
-//   - Parses and extracts the URL from the request                     //
-//   - Uses SHA1 to hash the URL into a unique cache filename           //
-//   - Checks for cache HIT or MISS based on the hashed filename        //
-//     • HIT  : Reads cached file and responds immediately              //
-//     • MISS : Connects to web server, fetches response, caches it     //
-//   - Logs each request with HIT/MISS result and timestamp             //
-//   - Prevents zombie processes using SIGCHLD handler                  //
-//   - Displays server internal IP and client port for debugging        //
-//   - Handles slow responses using a timeout signal (alarm)            //
+//   - Creates a TCP socket server and waits for incoming connections   //
+//   - Accepts client HTTP requests and extracts the target URL         //
+//   - Filters out unnecessary or background requests (e.g., favicon)   //
+//   - Forks a child process for each valid request                     //
+//     • Each child calls sub_process() to handle cache logic           //
+//       - If cache HIT: Reads from file and sends response             //
+//       - If cache MISS: Connects to remote server, stores response    //
+//   - Uses SHA1 hashing to generate unique cache filenames             //
+//   - Manages timeout handling with SIGALRM for slow responses         //
+//   - Prevents zombie processes using SIGCHLD signal handler           //
+//   - Supports graceful shutdown with SIGINT (Ctrl+C)                  //
+//   - Displays internal IP and client port for each request            //
 //////////////////////////////////////////////////////////////////////////
-
 int main(){
     
     struct sockaddr_in server_addr, client_addr;
@@ -206,7 +246,6 @@ int main(){
             return 0;
         }
 
-        printf("[%s : %d] client was connected\n", internel_ip, client_addr.sin_port);
         ssize_t n = read(client_fd, buf, BUFFSIZE);
         // error 3. read failed
         if (n <= 0) {
@@ -223,13 +262,12 @@ int main(){
         url = get_parsing_url(tmp);
         size_t len = strlen(url);
         
-        if (strstr(url, "favicon.ico") || strstr(url, "firewall") || strstr(url, "socket") || strstr(url, "manifest") || strstr(url, "goog")||strstr(url, "ocsp") || strstr(url, "r11") || strstr(url, "r10") || strstr(url, "css") || strstr(url, "firefox")){ 
+        //block not request url
+        if (is_filtered_url(url)) {
             close(client_fd);
-	    printf("=============not fork================\n");
+            printf("=============filtered: not fork================\n");
             continue;
-	    
-	}
-        printf("check\n");
+        }
         pid = fork();
 
         // error 2. can't execute "fork"
@@ -243,8 +281,7 @@ int main(){
             time_t sub_start_time;
             time(&sub_start_time);
 
-            int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count, client_fd);
-            printf("[%s : %d] client was disconnected\n", internel_ip, client_addr.sin_port);
+            int result = sub_process(url, log_fp, cachePath, client_fd);
             exit(0);
         }
         close(client_fd);

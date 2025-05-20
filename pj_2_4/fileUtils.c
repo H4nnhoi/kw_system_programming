@@ -85,7 +85,7 @@ void write_log_contents(FILE *log_fp, const char *contents){
 int read_file_to_buffer(FILE *fp, char *buffer, size_t bufsize) {
     if (fp == NULL) {
         fprintf(stderr, "[ERROR] File pointer is NULL. File must be opened before calling this function.\n");
-        exit(EXIT_FAILURE);  // 강제 종료
+        exit(EXIT_FAILURE);  
     }
 
     if (buffer == NULL || bufsize == 0) {
@@ -104,6 +104,49 @@ int read_file_to_buffer(FILE *fp, char *buffer, size_t bufsize) {
         return -1;
     }
 
-    buffer[total_read] = '\0';  // 텍스트용 null 종료
+    buffer[total_read] = '\0'; 
     return 0;
+}
+///////////////////////////////////////////////////////////////////////
+// read_file_to_dynamic_buffer                                       //
+///////////////////////////////////////////////////////////////////////
+// Input:                                                            //
+//   - FILE* fp         : File pointer to an opened file             //
+//   - size_t* size_out : Pointer to store the size of read data     //
+// Output:                                                           //
+//   - char*            : Pointer to dynamically allocated buffer    //
+//                        containing the full contents of the file   //
+//                        Returns NULL on failure                    //
+// Purpose:                                                          //
+//   - Reads the entire content of a file into a dynamically         //
+//     allocated memory buffer                                       //
+//   - Used for serving cached responses directly to clients         //
+///////////////////////////////////////////////////////////////////////
+char* read_file_to_dynamic_buffer(FILE *fp, size_t *size_out) {
+    if (fp == NULL || size_out == NULL) return NULL;
+
+    // mv endpoint
+    fseek(fp, 0, SEEK_END);
+    long size = ftell(fp);
+    rewind(fp);
+
+    if (size <= 0) return NULL;
+
+    // assign buffer (active)
+    char *buffer = malloc(size);
+    if (!buffer) {
+        perror("malloc failed");
+        return NULL;
+    }
+
+    // read
+    size_t read_bytes = fread(buffer, 1, size, fp);
+    if (read_bytes != (size_t)size) {
+        fprintf(stderr, "fread incomplete: expected %ld, got %zu\n", size, read_bytes);
+        free(buffer);
+        return NULL;
+    }
+
+    *size_out = read_bytes;
+    return buffer;
 }

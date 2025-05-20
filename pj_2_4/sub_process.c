@@ -69,38 +69,36 @@ void timeout_handler(int signum) {
     exit(PROCESS_EXIT);  // 자식 프로세스 종료
 }
 
-//////////////////////////////////////////////////////////////////////////
-// sub_process                                                          //
-//////////////////////////////////////////////////////////////////////////
-// Input:                                                               //
-//   - char* input_url       : The full URL requested by the client     //
-//   - pid_t* PID            : Pointer to the current child process ID  //
-//   - FILE* log_fp          : File pointer for the server log          //
-//   - const char* cachePath : Root directory path for cached files     //
-//   - time_t sub_start_time : Timestamp when the child process started //
-//   - int* hit_count        : Pointer to HIT counter                   //
-//   - int* miss_count       : Pointer to MISS counter                  //
-//   - char* buf             : Buffer to store the HTTP response        //
-//   - size_t buf_size       : Maximum size of the response buffer      //
-// Return:                                                              //
-//   - PROCESS_HIT           : Returned if cache HIT                    //
-//   - PROCESS_MISS          : Returned if cache MISS                   //
-//   - PROCESS_EXIT          : Returned on timeout or forced exit       //
-//   - PROCESS_UNKNOWN       : Returned on other internal errors        //
-// Description:                                                         //
-//   - Hashes the URL using SHA1 to generate a unique cache filename    //
-//   - Checks whether the file exists in the cache directory            //
-//   - On HIT: reads the cached file and stores its content in buffer   //
-//   - On MISS:                                                         //
-//       • Resolves IP address of the target host                       //
-//       • Connects to the web server via socket                        //
-//       • Sends an HTTP GET request and waits for response (10s)       //
-//       • Caches the received response to a file                       //
-//   - Logs each request with timestamp, URL, and HIT/MISS status       //
-//   - Frees any dynamically allocated resources                        //
-//////////////////////////////////////////////////////////////////////////
-int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time,
-                int *hit_count, int *miss_count, int client_fd) {
+
+///////////////////////////////////////////////////////////////////////////
+// sub_process                                                           //
+///////////////////////////////////////////////////////////////////////////
+// Input:                                                                //
+//   - char* input_url       : The full URL requested by the client      //
+//   - FILE* log_fp          : File pointer to the main server log       //
+//   - const char* cachePath : Root directory path for cached files      //
+//   - int client_fd         : Socket file descriptor for client(browser)//
+// Output:                                                               //
+//   - int                   : PROCESS_HIT if served from cache          //
+//                             PROCESS_MISS if fetched from web server   //
+//                             PROCESS_UNKNOWN on internal failure       //
+//                             PROCESS_EXIT on timeout                   //
+// Purpose:                                                              //
+//   - Handles an individual client request in a forked subprocess       //
+//   - Parses the URL into host/path and hashes it to a cache key        //
+//   - Determines whether the requested resource is already cached       //
+//   - If HIT:                                                           //
+//       • Reads cached file into memory and sends to client             //
+//   - If MISS:                                                          //
+//       • Resolves host IP, connects to web server                      //
+//       • Sends HTTP GET request                                        //
+//       • Receives full HTTP response                                   //
+//       • Sends response to client and caches it to a file              //
+//   - Logs the request with timestamp, status (HIT/MISS), and URL       //
+//   - Handles slow responses using alarm() for timeout protection       //
+//   - Frees all dynamically allocated memory before returning           //
+///////////////////////////////////////////////////////////////////////////
+int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client_fd) {
     if (input_url == NULL) {
         perror("input is null");
         return PROCESS_UNKNOWN;
@@ -148,16 +146,16 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
         snprintf(request_buf, sizeof(request_buf),
             "GET %s HTTP/1.1\r\n"
             "Host: %s\r\n"
-	    "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0\r\n"
-	    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
-	    "Accept-Language: en-US,en;q=0.5\r\n"
-	    "Accept-Encoding: identity\r\n"
-	    "Upgrade-Insecure-Requests: 1\r\n"
-	    "Connection: close\r\n\r\n",
+            "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0\r\n"
+            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
+            "Accept-Language: en-US,en;q=0.5\r\n"
+            "Accept-Encoding: identity\r\n"
+            "Upgrade-Insecure-Requests: 1\r\n"
+            "Connection: close\r\n\r\n",
             path, host);
         //START ALARM COUNT
-        alarm(30);
-	//sleep(5);
+        alarm(20);
+	    //sleep(5);
         if (send_http_request(server_fd, request_buf) < 0) {
             close(server_fd);
             free(subCachePath);
@@ -165,19 +163,19 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
         }
 	
         // write response to buf & cache file
-	ensureDirExist(subCachePath,0777);
-	createFile(subCachePath, fileName);
+        ensureDirExist(subCachePath,0777);
+        createFile(subCachePath, fileName);
         init_log(&cache_fp, cache_full_path);
 
-	size_t response_size;
-	char* response = receive_http_response(server_fd, &response_size);
-	send(client_fd, response, strlen(response), 0);
+        size_t response_size;
+        char* response = receive_http_response(server_fd, &response_size);
+        send(client_fd, response, strlen(response), 0);
         alarm(0);
         write_log_contents(cache_fp, response);
         close_log(cache_fp);
         // write miss log
         log_contents = get_miss_log(trimmed_url);
-        (*miss_count)++;
+        free(response);
 
     } else if (result == PROCESS_HIT) {
         // write response to buf
@@ -187,16 +185,20 @@ int sub_process(char* input_url, pid_t* PID, FILE *log_fp, const char *cachePath
             free(subCachePath);
             return PROCESS_UNKNOWN;
         }
-	char buf[MAX_INPUT];
-        read_file_to_buffer(cache_fp, buf, MAX_INPUT);
-	send(client_fd, buf, MAX_INPUT, 0);
-        close_log(cache_fp); 
+	    size_t file_size;
+        char *buf = read_file_to_dynamic_buffer(cache_fp, &file_size);
+
+        if (buf) {
+            send(client_fd, buf, file_size, 0);
+            free(buf);
+        } else {
+            fprintf(stderr, "Failed to read cache file into memory.\n");
+        }
+        close_log(cache_fp);
         // write hit log
         log_contents = get_hit_log(full_path, trimmed_url);
-        (*hit_count)++;
 
-    }
-    else {
+    } else {
         perror("not range of return\n");
         free(input_url);
         free(subCachePath);
