@@ -5,6 +5,6 @@
 #include <stdio.h>
 
 char *getIPAddr(char *addr);
-int sub_process(char *inputURL, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time, int *hit_count, int *miss_count, char* buf, size_t buf_size);
+int sub_process(char *inputURL, pid_t* PID, FILE *log_fp, const char *cachePath, time_t sub_start_time, int *hit_count, int *miss_count, int client_fd);
 
 #endif

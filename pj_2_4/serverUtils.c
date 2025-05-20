@@ -7,6 +7,7 @@
 #include <netinet/in.h>   
 #include <sys/socket.h>   
 #define BUFFSIZE 1024
+#define READ_BLOCK_SIZE 4096
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -35,6 +36,32 @@ char* get_parsing_url(const char* request){
     
     return strdup(url);
 }
+
+void get_parsing_host_and_path(const char* url, char *host, char *path){
+	char temp[BUFFSIZE];
+	strcpy(temp, url);
+
+	char *token;
+
+	if(strncmp(temp, "http://", 7) == 0){
+		token = temp + 7;
+	} else {
+		perror("not valid url");
+	}
+
+	char *slash = strchr(token, '/');
+	if(slash){
+		size_t host_len = slash - token;
+		strncpy(host, token, host_len);
+		host[host_len] = '\0';
+
+		snprintf(path, 512, "%s", slash);
+	} else{
+		strcpy(host, token);
+		strcpy(path, "/");
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////
 // connect_to_webserver                                              //
 ///////////////////////////////////////////////////////////////////////
@@ -113,21 +140,38 @@ int send_http_request(int sockfd, const char* request) {
 //   - Continues reading until the buffer is full or connection ends //
 //   - Appends null terminator at the end of the buffer              //
 ///////////////////////////////////////////////////////////////////////
-int receive_http_response(int sockfd, char* buffer, size_t size) {
-    ssize_t total_received = 0;
-    ssize_t n;
+char* receive_http_response(int sockfd, size_t *out_size) {
+    char *buffer = NULL;
+    size_t buffer_size = 0;
+    size_t total_received = 0;
+    
 
-    while ((n = read(sockfd, buffer + total_received, size - total_received)) > 0) {
+    while (1) {
+	buffer = realloc(buffer, buffer_size + READ_BLOCK_SIZE);
+	if(buffer == NULL){
+		perror("realloc failed");
+		return NULL;
+	}
+
+	size_t n = read(sockfd, buffer + total_received, READ_BLOCK_SIZE);
+	if(n < 0){
+		perror("read failed");
+		free(buffer);
+		return NULL;
+	}
+	else if(n == 0){
+		break;
+	}
+
         total_received += n;
-        if (total_received >= size) {
-            break;  // 버퍼 한계 도달
-        }
+        buffer_size += READ_BLOCK_SIZE;
     }
 
-    if (n < 0) {
-        perror("read from web server failed");
-        return -1;
-    }
+    buffer = realloc(buffer, total_received + 1);
     buffer[total_received] = '\0';
-    return total_received;
+
+    if(out_size != NULL){
+	    *out_size = total_received;
+    }
+    return buffer;
 }

@@ -117,7 +117,9 @@ char* get_internal_ip() {
 static void handler() {
     pid_t pid;
     int status;
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0);
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0){
+	    process_count++;
+    }
 }
 
 static void interrupt_handler(){
@@ -220,15 +222,14 @@ int main(){
         puts("====================================");
         url = get_parsing_url(tmp);
         size_t len = strlen(url);
-        if(len > 0 && url[len - 1] == '/'){
-            url[strlen(url) - 1] = '\0';        // remove slash
-        }
-        if (strstr(url, "favicon.ico") || strstr(url, "firewall") || strstr(url, "socket") || 
-            strstr(url, "manifest") || strstr(url, "fonts.googleapis.com")) {
-            close(client_fd);
-            continue;
-        }
         
+        if (strstr(url, "favicon.ico") || strstr(url, "firewall") || strstr(url, "socket") || strstr(url, "manifest") || strstr(url, "goog")||strstr(url, "ocsp") || strstr(url, "r11") || strstr(url, "r10") || strstr(url, "css") || strstr(url, "firefox")){ 
+            close(client_fd);
+	    printf("=============not fork================\n");
+            continue;
+	    
+	}
+        printf("check\n");
         pid = fork();
 
         // error 2. can't execute "fork"
@@ -242,15 +243,11 @@ int main(){
             time_t sub_start_time;
             time(&sub_start_time);
 
-            int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count, response_message, sizeof(response_message));
-
-            // 전송
-            write(client_fd, response_message, strlen(response_message));
+            int result = sub_process(url, &pid, log_fp, cachePath, sub_start_time, &hit_count, &miss_count, client_fd);
             printf("[%s : %d] client was disconnected\n", internel_ip, client_addr.sin_port);
             exit(0);
         }
         close(client_fd);
-        process_count++;
     }
 
     close(socket_fd);
