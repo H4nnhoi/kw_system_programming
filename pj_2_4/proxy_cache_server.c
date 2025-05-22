@@ -21,9 +21,8 @@
 #define BUFFSIZE 1024
 #define RESPONSE_SIZE 2048
 #define PORTNO 39999
-#define PROCESS_HIT 1
-#define PROCESS_MISS 0
-#define PROCESS_EXIT 7
+#define MAIN_REQUEST 1
+#define SUB_REQUEST 0
 #define PROCESS_UNKNOWN -1
 #define LOGFILE_NAME_SIZE 13 
 
@@ -32,13 +31,14 @@ char cachePath[BUFFSIZE];
 char logPath[BUFFSIZE];
 const char logfileName[LOGFILE_NAME_SIZE] = "logfile.txt";
 const char *filter_keywords[] = {
-    "favicon.ico", "firewall", "socket", "manifest",
-    "goog", "ocsp", "r11", "r10", "css", "firefox"
+    "firewall", "socket",
+    "goog", "ocsp", "r11", "r10", "firefox"
 };
 const int filter_keyword_count = sizeof(filter_keywords) / sizeof(filter_keywords[0]);
 time_t start_time;
 time_t end_time;
-int process_count;
+int process_count = 0;
+int pipefd[2];
 FILE *log_fp;
 
 ///////////////////////////////////////////////////////////////////////
@@ -117,9 +117,8 @@ char* get_internal_ip() {
 static void handler() {
     pid_t pid;
     int status;
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0){
-	    process_count++;
-    }
+    while ((pid = waitpid(-1, &status, WNOHANG))>0);
+
 }
 ///////////////////////////////////////////////////////////////////////
 // interrupt_handler                                                 //
@@ -220,8 +219,7 @@ int main(){
         return 0;
     }
 
-    listen(socket_fd, 5);
-    signal(SIGCHLD, (void *)handler);  // 자식 프로세스 종료 처리
+    listen(socket_fd, 10);
     signal(SIGINT, (void *) interrupt_handler);     // when interrupted process by cntrl + c
 
     while (1)
@@ -255,17 +253,14 @@ int main(){
         }
         strcpy(tmp, buf);
         inet_client_address.s_addr = client_addr.sin_addr.s_addr;
-        puts("====================================");
-        printf("Request from [%s : %d]\n", internel_ip, client_addr.sin_port);
-        puts(buf);
-        puts("====================================");
         url = get_parsing_url(tmp);
         size_t len = strlen(url);
         
+	    puts(buf);
+
         //block not request url
         if (is_filtered_url(url)) {
             close(client_fd);
-            printf("=============filtered: not fork================\n");
             continue;
         }
         pid = fork();
@@ -278,13 +273,25 @@ int main(){
         }
 
         if (pid == 0) {  // 자식 프로세스
+	    //close(pipefd[0]);
+	    int report = 0;
             time_t sub_start_time;
             time(&sub_start_time);
 
             int result = sub_process(url, log_fp, cachePath, client_fd);
+	    if(result == MAIN_REQUEST){
+		    report++;
+	    }
+	   // write(pipefd[1], &report, sizeof(report));
+	   // close(pipefd[1]);
             exit(0);
         }
-        close(client_fd);
+	else if(pid > 0) {
+        free(url);
+		close(client_fd);
+		wait(NULL);
+	}
+	//close(pipefd[1]);
     }
 
     close(socket_fd);

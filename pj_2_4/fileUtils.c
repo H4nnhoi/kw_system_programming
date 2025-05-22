@@ -133,7 +133,7 @@ char* read_file_to_dynamic_buffer(FILE *fp, size_t *size_out) {
     if (size <= 0) return NULL;
 
     // assign buffer (active)
-    char *buffer = malloc(size);
+    char *buffer = malloc(size + 1);
     if (!buffer) {
         perror("malloc failed");
         return NULL;
@@ -146,7 +146,16 @@ char* read_file_to_dynamic_buffer(FILE *fp, size_t *size_out) {
         free(buffer);
         return NULL;
     }
+    buffer[read_bytes] = '\0';
+    printf("[inner] addr : %p\n", (void*)buffer);
 
     *size_out = read_bytes;
     return buffer;
+}
+
+void write_cache_file(FILE *cache_fp, const char *response, size_t size){
+	if(cache_fp != NULL && response != NULL) {
+		fwrite(response, 1, size, cache_fp);
+		fflush(cache_fp);
+	}
 }

@@ -19,14 +19,16 @@
 #define LOGFILE_NAME_SIZE 13 
 #define CACHE_DIR_SIZE 4
 #define FILE_SIZE 40
-#define PROCESS_HIT 1
+#define MAIN_REQUEST 1
+#define SUB_REQUEST 0
 #define PROCESS_MISS 0
-#define PROCESS_EXIT 7
+#define PROCESS_HIT 0
 #define PROCESS_UNKNOWN -1
 #define DEFAULT_PORT 80
 
+const char *sub_request_list[] = {".ico", ".png", ".svg", ".json", ".html", ".css", ".js", ".jpg", ".jpeg", ".gif", ".svg", ".woff", ".ttf"}; 
 char cache_full_path[1024];
-
+int sub_request_count = sizeof(sub_request_list)/sizeof(sub_request_list[0]);
 ///////////////////////////////////////////////////////////////////////
 // getIPAddr                                                         //
 ///////////////////////////////////////////////////////////////////////
@@ -66,7 +68,7 @@ char *getIPAddr(char *addr)
 ///////////////////////////////////////////////////////////////////////
 void timeout_handler(int signum) {
     fprintf(stderr, "==========NO RESPONSE==========\n");
-    exit(PROCESS_EXIT);  // 자식 프로세스 종료
+    exit(PROCESS_UNKNOWN);  // 자식 프로세스 종료
 }
 
 
@@ -125,6 +127,15 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
 
     signal(SIGALRM, timeout_handler);
 
+    int is_sub_request = 0;
+
+    for(int i = 0; i < sub_request_count; i++){
+	    if(strstr(trimmed_url, sub_request_list[i]) != NULL){
+		    is_sub_request = 1;
+	    }
+    }
+
+
     if (result == PROCESS_MISS) {
         
         // get host ip address
@@ -156,7 +167,9 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
         //START ALARM COUNT
         alarm(20);
 	    //sleep(5);
-        if (send_http_request(server_fd, request_buf) < 0) {
+        if (send_http_request(server_fd, request_buf) < 0) 
+	{
+	    perror("cannot send request to server");
             close(server_fd);
             free(subCachePath);
             return PROCESS_UNKNOWN;
@@ -169,9 +182,9 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
 
         size_t response_size;
         char* response = receive_http_response(server_fd, &response_size);
-        send(client_fd, response, strlen(response), 0);
+        send(client_fd, response, response_size, 0);
         alarm(0);
-        write_log_contents(cache_fp, response);
+        write_cache_file(cache_fp, response, response_size);
         close_log(cache_fp);
         // write miss log
         log_contents = get_miss_log(trimmed_url);
@@ -185,15 +198,20 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
             free(subCachePath);
             return PROCESS_UNKNOWN;
         }
-	    size_t file_size;
-        char *buf = read_file_to_dynamic_buffer(cache_fp, &file_size);
+        //get response from file
+        fseek(cache_fp, 0, SEEK_END);
+        long size = ftell(cache_fp);
+        rewind(cache_fp);
 
-        if (buf) {
-            send(client_fd, buf, file_size, 0);
-            free(buf);
-        } else {
-            fprintf(stderr, "Failed to read cache file into memory.\n");
-        }
+        if(size <= 0) perror("fail to read");
+
+        char *buffer = malloc(size);
+        if(!buffer) perror("malloc failed");
+
+        size_t read_bytes = fread(buffer, 1, size, cache_fp);
+        if(read_bytes != (size_t)size) perror("fread incomplete");
+
+        send(client_fd, buffer, read_bytes, 0);
         close_log(cache_fp);
         // write hit log
         log_contents = get_hit_log(full_path, trimmed_url);
@@ -204,12 +222,19 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
         free(subCachePath);
         return PROCESS_UNKNOWN;
     }
-    printf("log : %s\n", log_contents);
-    write_log_contents(log_fp, log_contents);
+    // only write log when request case(not favicon, css, etc.)
+    if(!is_sub_request){
+	    write_log_contents(log_fp, log_contents);
+	    free(subCachePath);
+	    free(log_contents);
+	    free(full_path);
+	    return SUB_REQUEST;
+    }
     free(subCachePath);
     free(log_contents);
     free(full_path);
+    free(cache_fp);
 
-    return result;
+    return MAIN_REQUEST;
 }
 

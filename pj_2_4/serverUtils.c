@@ -158,16 +158,19 @@ char* receive_http_response(int sockfd, size_t *out_size) {
     char *buffer = NULL;
     size_t buffer_size = 0;
     size_t total_received = 0;
+    size_t content_length = 0;
+    int header_parsed = 0;
+    char *header_end = NULL;
     
 
     while (1) {
         //if want to expand size, re-allocate
-        buffer = realloc(buffer, buffer_size + READ_BLOCK_SIZE);
+        buffer = realloc(buffer, buffer_size + READ_BLOCK_SIZE + 1);
         if(buffer == NULL){
             perror("realloc failed");
             return NULL;
         }
-
+	// get response message
         size_t n = read(sockfd, buffer + total_received, READ_BLOCK_SIZE);
         if(n < 0){
             perror("read failed");
@@ -175,17 +178,49 @@ char* receive_http_response(int sockfd, size_t *out_size) {
             return NULL;
         }
         else if(n == 0){
-            break;
+            if(header_parsed && total_received >= content_length) {
+		    break;
+	    }
+	    else{
+		    usleep(5000);
+		    continue;
+	    }
         }
-        total_received += n;
-        buffer_size += READ_BLOCK_SIZE;
-    }
 
-    buffer = realloc(buffer, total_received + 1);
-    buffer[total_received] = '\0';
+        total_received += n;
+	buffer_size += n;
+	buffer[total_received] = '\0';
+
+	// if not found header yet
+	if(!header_parsed) {
+		header_end = strstr(buffer, "\r\n\r\n");
+		if(!header_end) continue;
+
+		header_parsed = 1;
+
+		// find Content-Length
+		char *cl_ptr = strstr(buffer, "Content-Length:");
+		if(cl_ptr == NULL){
+			perror("Content Length not found");
+			return NULL;
+		}
+		// move offset
+		cl_ptr += strlen("Content-Length:");
+		while (*cl_ptr == ' ') cl_ptr++;
+		content_length = atoi(cl_ptr);
+
+		int header_size = (header_end - buffer) + 4;
+		content_length += header_size;
+	}
+	
+	if(header_parsed && total_received >= content_length){
+		break;
+	}
+    }
 
     if(out_size != NULL){
 	    *out_size = total_received;
     }
     return buffer;
 }
+
