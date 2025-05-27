@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "types.h": "c",
+        "stdlib.h": "c",
+        "if.h": "c",
+        "ifaddrs.h": "c",
+        "dirutils.h": "c",
+        "fileutils.h": "c"
+    }
+}
