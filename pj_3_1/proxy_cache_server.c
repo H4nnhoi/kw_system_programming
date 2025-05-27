@@ -38,7 +38,6 @@ const int filter_keyword_count = sizeof(filter_keywords) / sizeof(filter_keyword
 time_t start_time;
 time_t end_time;
 int process_count = 0;
-int pipefd[2];
 FILE *log_fp;
 
 ///////////////////////////////////////////////////////////////////////
@@ -117,9 +116,7 @@ char* get_internal_ip() {
 static void handler() {
     pid_t pid;
     int status;
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0){
-        process_count ++;
-    }
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0);
 
 }
 ///////////////////////////////////////////////////////////////////////
@@ -226,6 +223,7 @@ int main(){
 	signal(SIGCHLD, (void *) handler);
     while (1)
     {
+        int pipefd[2];
         struct in_addr inet_client_address;
 
         char response_header[BUFFSIZE] = {0, };
@@ -265,7 +263,8 @@ int main(){
             close(client_fd);
             continue;
         }
-        pid = vfork();
+        pipe(pipefd);
+        pid = fork();
 
         // error 2. can't execute "fork"
         if (pid == -1) {
@@ -275,7 +274,7 @@ int main(){
         }
 
         if (pid == 0) {  // 자식 프로세스
-	        //close(pipefd[0]);
+	        close(pipefd[0]);       //close read
             int report = 0;
             time_t sub_start_time;
             time(&sub_start_time);
@@ -284,13 +283,20 @@ int main(){
             if(result == MAIN_REQUEST){
                 report++;
             }
-            //write(pipefd[1], &report, sizeof(report));
-            //close(pipefd[1]);
+            write(pipefd[1], &report, sizeof(report));
+            close(pipefd[1]);       //close write
             exit(0);
+        }else{          // 부모 프로세스
+            close(pipefd[1]);
+            int report = 0;
+            read(pipefd[0], &report, sizeof(report));
+            process_count += report;
+            close(pipefd[0]);
+
+            close(client_fd);
+	        free(url);
         }
-        close(client_fd);
-	    free(url);
-	    //close(pipefd[1]);
+        
     }
 
     close(socket_fd);

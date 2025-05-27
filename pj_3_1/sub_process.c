@@ -135,6 +135,7 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
     for(int i = 0; i < sub_request_count; i++){
 	    if(strstr(trimmed_url, sub_request_list[i]) != NULL){
 		    is_sub_request = 1;
+            break;
 	    }
     }
 
@@ -209,7 +210,12 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
         if(size <= 0) perror("fail to read");
 
         char *buffer = malloc(size);
-        if(!buffer) perror("malloc failed");
+        if(!buffer) {
+            perror("malloc failed");
+            close_log(cache_fp);
+            free(subCachePath);
+            return PROCESS_UNKNOWN;
+        }
 
         size_t read_bytes = fread(buffer, 1, size, cache_fp);
         if(read_bytes != (size_t)size) perror("fread incomplete");
@@ -228,8 +234,9 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
     // only write log when request case(not favicon, css, etc.)
     if(!is_sub_request){
         int semid, pid = getpid();
+        semid = initsem(pid);
 
-        if(semid = initsem(pid) < 0) {
+        if(semid < 0) {
             perror("cannot get semid");
             return PROCESS_UNKNOWN;
         }
@@ -241,16 +248,16 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
         printf("*PID# %d is in the critical zone.\n", pid);
         write_log_contents(log_fp, log_contents);
         v(semid);
-        
+
 	    free(subCachePath);
 	    free(log_contents);
 	    free(full_path);
-	    return SUB_REQUEST;
+	    return MAIN_REQUEST;
     }
     free(subCachePath);
     free(log_contents);
     free(full_path);
 
-    return MAIN_REQUEST;
+    return SUB_REQUEST;
 }
 
