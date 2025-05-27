@@ -117,7 +117,9 @@ char* get_internal_ip() {
 static void handler() {
     pid_t pid;
     int status;
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0);
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0){
+        process_count ++;
+    }
 
 }
 ///////////////////////////////////////////////////////////////////////
@@ -263,7 +265,7 @@ int main(){
             close(client_fd);
             continue;
         }
-        pid = fork();
+        pid = vfork();
 
         // error 2. can't execute "fork"
         if (pid == -1) {
@@ -273,22 +275,22 @@ int main(){
         }
 
         if (pid == 0) {  // 자식 프로세스
-	    //close(pipefd[0]);
-	    int report = 0;
+	        //close(pipefd[0]);
+            int report = 0;
             time_t sub_start_time;
             time(&sub_start_time);
 
             int result = sub_process(url, log_fp, cachePath, client_fd);
-	    if(result == MAIN_REQUEST){
-		    report++;
-	    }
-	    //write(pipefd[1], &report, sizeof(report));
-	    //close(pipefd[1]);
+            if(result == MAIN_REQUEST){
+                report++;
+            }
+            //write(pipefd[1], &report, sizeof(report));
+            //close(pipefd[1]);
             exit(0);
         }
-	close(client_fd);
-	free(url);
-	//close(pipefd[1]);
+        close(client_fd);
+	    free(url);
+	    //close(pipefd[1]);
     }
 
     close(socket_fd);
