@@ -7,12 +7,15 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <sys/sem.h>
+#include <errno.h>
 #include "sha1Utils.h"
 #include "dirUtils.h"
 #include "fileUtils.h"
 #include "hit_and_miss.h"
 #include "inputUtils.h"
 #include "serverUtils.h"
+#include "semaphoreUtils.h"
 
 #define MAX_INPUT 4096
 #define BUFFSIZE 2048
@@ -135,8 +138,6 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
 	    }
     }
 
-    printf("case is : %d\n", result);
-
 
     if (result == PROCESS_MISS) {
         
@@ -226,7 +227,21 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
     }
     // only write log when request case(not favicon, css, etc.)
     if(!is_sub_request){
-	    write_log_contents(log_fp, log_contents);
+        int semid, pid = getpid();
+
+        if(semid = initsem(pid) < 0) {
+            perror("cannot get semid");
+            return PROCESS_UNKNOWN;
+        }
+        // wait
+        printf("*PID# %d is wating for semaphore.\n", pid);
+        p(semid);
+        sleep(5);
+        //critical section
+        printf("*PID# %d is in the critical zone.\n", pid);
+        write_log_contents(log_fp, log_contents);
+        v(semid);
+        
 	    free(subCachePath);
 	    free(log_contents);
 	    free(full_path);
