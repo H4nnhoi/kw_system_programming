@@ -144,15 +144,18 @@ int send_http_request(int sockfd, const char* request) {
 // receive_http_response                                              //
 ////////////////////////////////////////////////////////////////////////
 // Input:                                                             //
-//   - int sockfd         : Socket file descriptor connected to host  //
-//   - size_t* out_size   : Pointer to store the size of received data//
+//   - int sockfd       : Socket file descriptor connected to a host //
+//   - size_t* out_size : Pointer to store the total size of the data //
 // Output:                                                            //
-//   - char*              : Pointer to dynamically allocated buffer   //
-//                          Returns NULL on failure                   //
+//   - char*            : Pointer to a dynamically allocated buffer   //
+//                        containing the full HTTP response           //
+//                        (must be freed by the caller)               //
+//                        Returns NULL on failure                     //
 // Purpose:                                                           //
-//   - Receives a complete HTTP response from the given socket        //
-//   - Dynamically expands buffer as data is received                 //
-//   - Ensures memory safety and null-terminates the final buffer     //
+//   - Reads a full HTTP response from the connected socket           //
+//   - Dynamically expands the buffer as data is received             //
+//   - Parses the Content-Length header to determine full message size//
+//   - Ensures the response is null-terminated for string safety      //
 ////////////////////////////////////////////////////////////////////////
 char* receive_http_response(int sockfd, size_t *out_size) {
     char *buffer = NULL;

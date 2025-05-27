@@ -5,6 +5,19 @@
 #include <sys/sem.h>
 #include <errno.h>
 
+
+///////////////////////////////////////////////////////////////////////////
+// p                                                                     //
+///////////////////////////////////////////////////////////////////////////
+// Input:                                                                //
+//   - int semid : Semaphore ID                                          //
+// Output:                                                               //
+//   - None                                                              //
+// Purpose:                                                              //
+//   - Performs the "P" operation (wait) on the semaphore                //
+//   - Decrements the semaphore value by 1                               //
+//   - If the value is already 0, the calling process is blocked         //
+///////////////////////////////////////////////////////////////////////////
 void p(int semid) {
     struct sembuf pbuf;
     pbuf.sem_num = 0;
@@ -16,6 +29,18 @@ void p(int semid) {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+// v                                                                     //
+///////////////////////////////////////////////////////////////////////////
+// Input:                                                                //
+//   - int semid : Semaphore ID                                          //
+// Output:                                                               //
+//   - None                                                              //
+// Purpose:                                                              //
+//   - Performs the "V" operation (signal) on the semaphore              //
+//   - Increments the semaphore value by 1                               //
+//   - Wakes up a blocked process if any are waiting                     //
+///////////////////////////////////////////////////////////////////////////
 void v(int semid) {
     struct sembuf vbuf;
     vbuf.sem_num = 0;
@@ -26,7 +51,19 @@ void v(int semid) {
         exit(1);
     }
 }
-
+///////////////////////////////////////////////////////////////////////////
+// initsem                                                               //
+///////////////////////////////////////////////////////////////////////////
+// Input:                                                                //
+//   - key_t skey : Unique key to identify the semaphore set             //
+// Output:                                                               //
+//   - int       : Semaphore ID                                          //
+// Purpose:                                                              //
+//   - Initializes or accesses a semaphore set with the given key        //
+//   - If the semaphore already exists (EEXIST), opens it                //
+//   - If it doesn't exist, creates it and sets the initial value to 1   //
+//   - Ensures a single binary semaphore is shared across processes      //
+///////////////////////////////////////////////////////////////////////////
 int initsem(key_t skey)
 {
     int status = 0, semid;

@@ -4,7 +4,7 @@ CC = gcc
 TARGET_SERVER = proxy_cache
 
 # SRC files
-SERVER_SRC = proxy_cache_server.c sub_process.c inputUtils.c dirUtils.c fileUtils.c hit_and_miss.c sha1Utils.c timeUtils.c serverUtils.c
+SERVER_SRC = proxy_cache_server.c sub_process.c inputUtils.c dirUtils.c fileUtils.c hit_and_miss.c sha1Utils.c timeUtils.c serverUtils.c semaphoreUtils.c
 
 
 # Default target

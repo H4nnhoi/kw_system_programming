@@ -24,7 +24,15 @@
 #define MAIN_REQUEST 1
 #define SUB_REQUEST 0
 #define PROCESS_UNKNOWN -1
-#define LOGFILE_NAME_SIZE 13 
+#define LOGFILE_NAME_SIZE 13
+
+typedef struct{
+	pid_t pid;
+	int pipefd[2];
+}child_info;
+
+child_info children[BUFFSIZE];
+int child_count = 0;
 
 char home[BUFFSIZE];
 char cachePath[BUFFSIZE];
@@ -134,6 +142,16 @@ static void handler() {
 static void interrupt_handler(){
     char* terminate_log = NULL;
     time(&end_time);
+    for(int i = 0; i < child_count; i++){
+	    waitpid(children[i].pid, NULL, 0);
+
+	    int report = 0;
+	    if(read(children[i].pipefd[0], &report, sizeof(report)) > 0){
+		    process_count += report;
+	    }
+	    close(children[i].pipefd);
+    }
+
     terminate_log = get_server_terminated_log(difftime(end_time, start_time), process_count);
     write_log_contents(log_fp, terminate_log);
     close_log(terminate_log);
@@ -141,7 +159,7 @@ static void interrupt_handler(){
 
 ///////////////////////////////////////////////////////////////////////
 // is_filtered_url                                                   //
-///////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////i/////////////
 // Input:                                                            //
 //   - const char* url : The URL string from the HTTP request        //
 // Return:                                                           //
@@ -220,7 +238,7 @@ int main(){
 
     listen(socket_fd, 10);
     signal(SIGINT, (void *) interrupt_handler);     // when interrupted process by cntrl + c
-	signal(SIGCHLD, (void *) handler);
+	//signal(SIGCHLD, (void *) handler);
     while (1)
     {
         int pipefd[2];
@@ -256,7 +274,6 @@ int main(){
         url = get_parsing_url(tmp);
         size_t len = strlen(url);
         
-	    puts(buf);
 
         //block not request url
         if (is_filtered_url(url)) {
@@ -274,11 +291,9 @@ int main(){
         }
 
         if (pid == 0) {  // 자식 프로세스
+		signal(SIGINT, SIG_IGN);
 	        close(pipefd[0]);       //close read
             int report = 0;
-            time_t sub_start_time;
-            time(&sub_start_time);
-
             int result = sub_process(url, log_fp, cachePath, client_fd);
             if(result == MAIN_REQUEST){
                 report++;
@@ -288,10 +303,9 @@ int main(){
             exit(0);
         }else{          // 부모 프로세스
             close(pipefd[1]);
-            int report = 0;
-            read(pipefd[0], &report, sizeof(report));
-            process_count += report;
-            close(pipefd[0]);
+	    children[child_count].pid = pid;
+	    children[child_count].pipefd[0] = pipefd[0];
+	    child_count++;
 
             close(client_fd);
 	        free(url);

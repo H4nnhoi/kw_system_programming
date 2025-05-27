@@ -117,7 +117,7 @@ char* get_internal_ip() {
 static void handler() {
     pid_t pid;
     int status;
-    while ((pid = waitpid(-1, &status, WNOHANG))>0);
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0);
 
 }
 ///////////////////////////////////////////////////////////////////////
@@ -173,7 +173,7 @@ int is_filtered_url(const char *url) {
 // OS        : Ubuntu                                                   //
 // Author    : 이정한                                                     //
 //////////////////////////////////////////////////////////////////////////
-// Title     : System Programming Assignment #2-3 (Proxy Server)        //
+// Title     : System Programming Assignment #2-4 (Proxy Server)        //
 // Description :                                                        //
 //   This proxy server handles HTTP GET requests from web browsers.     //
 //   Each client connection is handled by a forked child process.       //
@@ -221,7 +221,7 @@ int main(){
 
     listen(socket_fd, 10);
     signal(SIGINT, (void *) interrupt_handler);     // when interrupted process by cntrl + c
-
+	signal(SIGCHLD, (void *) handler);
     while (1)
     {
         struct in_addr inet_client_address;
@@ -245,7 +245,7 @@ int main(){
         }
 
         ssize_t n = read(client_fd, buf, BUFFSIZE);
-        // error 3. read failed
+        // error. read failed
         if (n <= 0) {
             perror("read failed or client closed connection");
             close(client_fd);
@@ -265,7 +265,7 @@ int main(){
         }
         pid = fork();
 
-        // error 2. can't execute "fork"
+        // error. can't execute "fork"
         if (pid == -1) {
             close(client_fd);
             close(socket_fd);
@@ -282,15 +282,12 @@ int main(){
 	    if(result == MAIN_REQUEST){
 		    report++;
 	    }
-	   // write(pipefd[1], &report, sizeof(report));
-	   // close(pipefd[1]);
+	    //write(pipefd[1], &report, sizeof(report));
+	    //close(pipefd[1]);
             exit(0);
         }
-	else if(pid > 0) {
-        free(url);
-		close(client_fd);
-		wait(NULL);
-	}
+	close(client_fd);
+	free(url);
 	//close(pipefd[1]);
     }
 

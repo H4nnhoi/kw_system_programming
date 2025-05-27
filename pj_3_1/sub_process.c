@@ -243,11 +243,12 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
         // wait
         printf("*PID# %d is wating for semaphore.\n", pid);
         p(semid);
-        sleep(5);
+        sleep(10);
         //critical section
         printf("*PID# %d is in the critical zone.\n", pid);
         write_log_contents(log_fp, log_contents);
         v(semid);
+	printf("*PID# %d exited the critical zone.\n", pid);
 
 	    free(subCachePath);
 	    free(log_contents);

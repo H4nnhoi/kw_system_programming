@@ -22,7 +22,7 @@
 #define MAIN_REQUEST 1
 #define SUB_REQUEST 0
 #define PROCESS_MISS 0
-#define PROCESS_HIT 0
+#define PROCESS_HIT 1
 #define PROCESS_UNKNOWN -1
 #define DEFAULT_PORT 80
 
@@ -135,6 +135,8 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
 	    }
     }
 
+    printf("case is : %d\n", result);
+
 
     if (result == PROCESS_MISS) {
         
@@ -233,7 +235,6 @@ int sub_process(char* input_url, FILE *log_fp, const char *cachePath, int client
     free(subCachePath);
     free(log_contents);
     free(full_path);
-    free(cache_fp);
 
     return MAIN_REQUEST;
 }
